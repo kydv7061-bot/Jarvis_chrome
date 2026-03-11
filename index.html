@@ -1273,6 +1273,165 @@ body::before {
   border-color:var(--blue);
   box-shadow:0 0 6px rgba(0,207,255,0.3);
 }
+
+/* ═══════════════════════════════════════════════════
+   MOBILE RESPONSIVE — Full redesign for phones
+   ═══════════════════════════════════════════════════ */
+
+/* Hide desktop corners on mobile */
+@media (max-width: 768px) {
+  .corner { display: none; }
+  
+  /* Reduce scanline performance cost */
+  body::before { animation: none; }
+  .grid-bg { animation: none; }
+
+  /* ── TOPBAR ── */
+  #topbar {
+    padding: 0 10px !important;
+    height: 48px !important;
+  }
+  #topbar .logo-text { 
+    font-size: 14px !important; 
+    letter-spacing: 4px !important;
+  }
+  /* Hide non-essential topbar items */
+  #topbar .status-pill,
+  #extStatus,
+  #tokenCount,
+  #msgCount {
+    display: none !important;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    position: fixed !important;
+    left: -220px !important;
+    top: 48px !important;
+    height: calc(100vh - 48px) !important;
+    z-index: 500 !important;
+    transition: left 0.3s ease !important;
+    width: 200px !important;
+  }
+  #sidebar.mobile-open {
+    left: 0 !important;
+    box-shadow: 4px 0 30px rgba(0,0,0,0.8) !important;
+  }
+
+  /* ── HAMBURGER BUTTON ── */
+  #mobileMenuBtn {
+    display: flex !important;
+  }
+
+  /* ── MAIN AREA ── */
+  #mainArea {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* ── MESSAGES ── */
+  #messages {
+    padding: 10px 10px 0 10px !important;
+  }
+
+  /* ── MESSAGE BUBBLES ── */
+  .msg-user, .msg-jarvis {
+    max-width: 92% !important;
+    font-size: 12px !important;
+  }
+  .msg-user {
+    margin-left: auto !important;
+  }
+
+  /* ── INPUT AREA ── */
+  #inputArea {
+    padding: 8px 10px !important;
+  }
+  #mainInput {
+    font-size: 13px !important;
+    padding: 10px 12px !important;
+    min-height: 42px !important;
+    max-height: 120px !important;
+  }
+  #sendBtn {
+    width: 42px !important;
+    height: 42px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── MODE TABS ── */
+  #modeTabs {
+    gap: 4px !important;
+    padding: 6px 10px !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  #modeTabs::-webkit-scrollbar { display: none; }
+  .mode-tab {
+    font-size: 8px !important;
+    padding: 5px 8px !important;
+    letter-spacing: 1px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── LOG PANEL ── */
+  #logPanel { display: none !important; }
+
+  /* ── PROFILE PANEL ── */
+  #profilePanel {
+    width: 100% !important;
+    top: 48px !important;
+  }
+
+  /* ── LEARN PANEL ── */
+  #learnPanel {
+    padding-top: 48px !important;
+  }
+  #learnSidebar {
+    width: 200px !important;
+    display: none !important;
+  }
+  #learnSidebar.mobile-visible {
+    display: block !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 48px !important;
+    height: calc(100vh - 48px) !important;
+    z-index: 600 !important;
+    width: 240px !important;
+    background: #010810 !important;
+    border-right: 1px solid rgba(0,207,255,0.2) !important;
+  }
+  #learnContent {
+    padding: 16px !important;
+  }
+  /* Hide right ask panel on small screens */
+  #learnPanel > div > div:last-child {
+    display: none !important;
+  }
+
+  /* ── BOOT SCREEN ── */
+  .boot-logo {
+    font-size: 28px !important;
+    letter-spacing: 8px !important;
+  }
+
+  /* ── HUD STATS ── */
+  #hudStats { display: none !important; }
+
+  /* ── CHAT TIMESTAMPS ── */
+  .msg-time { display: none !important; }
+}
+
+/* Tablet tweaks */
+@media (max-width: 1024px) and (min-width: 769px) {
+  #sidebar { width: 160px !important; }
+  #logPanel { width: 180px !important; }
+  .boot-logo { font-size: 36px !important; }
+}
+
 </style>
 </head>
 <body>
@@ -2915,6 +3074,74 @@ function toggleProfile() {
     panel.style.display = 'none';
   }
 }
+</script>
+
+
+<script>
+// ── MOBILE MENU LOGIC ──
+function toggleMobileMenu() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.classList.toggle('mobile-open');
+  // Close on outside click
+  document.addEventListener('click', function closeSidebar(e) {
+    if (!sidebar.contains(e.target) && e.target.id !== 'mobileMenuBtn' && !e.target.closest('#mobileMenuBtn')) {
+      sidebar.classList.remove('mobile-open');
+      document.removeEventListener('click', closeSidebar);
+    }
+  });
+}
+
+// ── MOBILE LEARN SIDEBAR ──
+function toggleLearnSidebar() {
+  const sb = document.getElementById('learnSidebar');
+  sb.classList.toggle('mobile-visible');
+}
+
+// ── DETECT MOBILE & ADD BUTTON ──
+function initMobile() {
+  if (window.innerWidth <= 768) {
+    // Add hamburger to topbar
+    const topbar = document.getElementById('topbar');
+    if (topbar && !document.getElementById('mobileMenuBtn')) {
+      const btn = document.createElement('button');
+      btn.id = 'mobileMenuBtn';
+      btn.onclick = toggleMobileMenu;
+      btn.style.cssText = 'display:flex;flex-direction:column;gap:4px;background:transparent;border:none;cursor:pointer;padding:6px;margin-right:8px;';
+      btn.innerHTML = `
+        <span style="width:20px;height:2px;background:#00cfff;display:block;border-radius:1px;"></span>
+        <span style="width:14px;height:2px;background:#00cfff;display:block;border-radius:1px;"></span>
+        <span style="width:20px;height:2px;background:#00cfff;display:block;border-radius:1px;"></span>
+      `;
+      topbar.insertBefore(btn, topbar.firstChild);
+    }
+
+    // Add steps button in learn panel header
+    const learnHeader = document.querySelector('#learnPanel > div:first-child');
+    if (learnHeader && !document.getElementById('learnStepsBtn')) {
+      const stepsBtn = document.createElement('button');
+      stepsBtn.id = 'learnStepsBtn';
+      stepsBtn.textContent = '☰ STEPS';
+      stepsBtn.onclick = toggleLearnSidebar;
+      stepsBtn.style.cssText = 'background:transparent;border:1px solid rgba(0,207,255,0.3);color:#00cfff;padding:5px 10px;font-size:9px;font-family:Share Tech Mono,monospace;letter-spacing:2px;cursor:pointer;border-radius:2px;';
+      learnHeader.appendChild(stepsBtn);
+    }
+
+    // Touch swipe to close sidebar
+    let touchStartX = 0;
+    document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+    document.addEventListener('touchend', e => {
+      const diff = touchStartX - e.changedTouches[0].clientX;
+      if (diff > 50) { // swipe left
+        document.getElementById('sidebar')?.classList.remove('mobile-open');
+        document.getElementById('learnSidebar')?.classList.remove('mobile-visible');
+      }
+    });
+  }
+}
+
+// Run on load and resize
+window.addEventListener('load', initMobile);
+window.addEventListener('resize', initMobile);
 </script>
 
 </body>

@@ -1866,12 +1866,34 @@ async function sendMessage() {
       // REGULAR CHAT — first check if it's an automation command
       addMessage('user', text);
 
+        // ── SMART LEARN DETECTION ──
+      // Detect "I want to learn X" or "learn X from basics" etc
+      const learnDetect = text.match(
+        /(?:i want to learn|learn|mujhe seekhna hai|sikha do|teach me|start learning)\s+(.+?)(?:\s+from\s+basics?)?(?:\s+course)?$/i
+      );
+      const learnKeywords = ['want to learn', 'mujhe seekhna', 'sikha do', 'teach me', 'learn java', 
+        'learn python', 'learn react', 'learn dsa', 'start learning', 'course banao', 'course chahiye',
+        'learn from scratch', 'from basics', 'from beginning', 'start from zero'];
+      const isLearnRequest = learnKeywords.some(k => text.toLowerCase().includes(k)) || 
+                             /^learn\s+\w+/i.test(text.trim());
+
+      if (isLearnRequest && learnDetect) {
+        const topic = learnDetect[1].trim();
+        addMessage('jarvis', `🎓 **LEARNING PROTOCOL ACTIVATED**\n\nOpening dedicated course for **${topic}**, Sir. Initializing curriculum...`);
+        // Auto open learn panel and start course
+        setTimeout(() => {
+          openLearnPanel();
+          document.getElementById('learnTopicInput').value = topic;
+          setTimeout(() => startLearning(), 400);
+        }, 800);
+        typing.style.display = 'none';
+        return;
+      }
+
       // Try extension automation first
       if (extensionConnected) {
         const sent = sendToExtension(text);
         if (sent) {
-          // Give extension time to respond, if it handles it we get JARVIS_RESULT
-          // Meanwhile also get JARVIS commentary
           chatHistory.push({ role: 'user', content: text });
         }
       }

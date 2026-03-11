@@ -564,6 +564,5 @@ app.listen(PORT, () => {
   ║   Just A Rather Very Intelligent     ║
   ║   System — v3.0.0 + Telegram         ║
   ╚══════════════════════════════════════╝
-  `); // Telegram Bot Integration
-import('./telegram-bot.js').catch(err => console.error('Bot error:', err));
+  `); 
 });

@@ -1865,7 +1865,9 @@ body::before {
     <div class="chat-header">
       <div class="chat-title">◈ NEURAL INTERFACE — DIRECT COMM CHANNEL</div>
       <div class="chat-actions">
-        <button class="icon-btn" id="voiceBtn" onclick="toggleVoice()" title="Voice Input">🎤</button>
+        <button class="icon-btn" id="voiceBtn" onclick="toggleVoice()" title="Voice Input — Click to speak">🎤</button>
+        <button class="icon-btn" id="voiceLangBtn" onclick="toggleVoiceLang()" title="Switch Hindi/English voice" style="font-size:9px;letter-spacing:1px;padding:4px 8px;">🇮🇳 HI</button>
+        <button class="icon-btn" id="jarvisVoiceBtn" onclick="toggleJarvisVoice()" title="Enable JARVIS Voice" style="font-size:10px;">🔊</button>
         <button class="icon-btn" id="searchModeBtn" onclick="toggleMode('search')" title="Web Search Mode">🌐</button>
         <button class="icon-btn" id="uploadModeBtn" onclick="toggleMode('upload')" title="File Upload">📎</button>
         <button class="icon-btn" id="streamBtn" onclick="toggleStream()" title="Streaming Mode">⚡</button>
@@ -1891,6 +1893,7 @@ body::before {
 
     <div class="input-area">
       <!-- Voice indicator -->
+      <div id="voiceStatus" style="font-size:9px;color:#00cfff;letter-spacing:1px;padding:0 8px;display:none;"></div>
       <div id="voiceIndicator">
         <div class="voice-waves">
           <div class="voice-wave"></div>
@@ -2133,6 +2136,79 @@ setInterval(() => {
     });
   }
 }, 2000);
+
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DEEP THINK MODE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let deepThinkActive = false;
+
+function toggleDeepThink() {
+  deepThinkActive = !deepThinkActive;
+  const btn = document.getElementById('deepThinkBtn');
+  if (deepThinkActive) {
+    btn.style.borderColor = '#a855f7';
+    btn.style.color = '#a855f7';
+    btn.style.boxShadow = '0 0 10px rgba(168,85,247,0.3)';
+    btn.textContent = '🧠 DEEP';
+    notify('Deep Think Mode ON — JARVIS will research before answering, Sir', 'success');
+  } else {
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn.style.boxShadow = '';
+    btn.textContent = '🔍 DEEP';
+    notify('Deep Think Mode OFF', 'info');
+  }
+}
+
+async function deepThinkSend(message) {
+  const typing = document.getElementById('typingIndicator');
+  typing.style.display = 'flex';
+  typing.querySelector('.typing-text').textContent = '🧠 Deep thinking... researching...';
+  avatarThinking && avatarThinking();
+
+  // Show thinking steps live
+  const stepsDiv = document.createElement('div');
+  stepsDiv.style.cssText = 'padding:10px 16px;border-left:2px solid #a855f7;margin:8px 0;font-size:10px;color:#6a3090;letter-spacing:1px;';
+  stepsDiv.innerHTML = '<div style="color:#a855f7;margin-bottom:6px;">🧠 DEEP THINK — INITIALIZING...</div>';
+  document.getElementById('chatBox').appendChild(stepsDiv);
+  document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
+
+  const phases = ['ANALYZING QUERY...', 'SEARCHING WEB SOURCES...', 'CROSS-REFERENCING DATA...', 'SYNTHESIZING ANSWER...'];
+  let phaseIdx = 0;
+  const phaseTimer = setInterval(() => {
+    if (phaseIdx < phases.length) {
+      stepsDiv.innerHTML += `<div>◈ ${phases[phaseIdx]}</div>`;
+      phaseIdx++;
+      document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight;
+    }
+  }, 1200);
+
+  try {
+    const res = await fetch(`${API_BASE}/api/deepthink`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, model: currentModel })
+    });
+    const data = await res.json();
+
+    clearInterval(phaseTimer);
+    stepsDiv.innerHTML += `<div style="color:#00ff88;margin-top:4px;">✓ COMPLETE — ${data.sources || 0} sources analyzed</div>`;
+
+    typing.style.display = 'none';
+    if (data.error) throw new Error(data.error);
+
+    addMessage('jarvis', data.reply);
+    chatHistory.push({ role: 'assistant', content: data.reply });
+
+  } catch(err) {
+    clearInterval(phaseTimer);
+    typing.style.display = 'none';
+    stepsDiv.innerHTML += `<div style="color:#ff4444;">✕ Error: ${err.message}</div>`;
+    avatarError && avatarError();
+  }
+  avatarIdle && avatarIdle();
+}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // BOOT
@@ -2652,50 +2728,66 @@ function setFile(file) {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // VOICE INPUT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// VOICE INPUT — Hindi/Hinglish/English
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let voiceLang = 'hi-IN'; // Default Hindi - catches Hinglish too
+let jarvisSpeaking = false;
+let speechQueue = [];
+
 function toggleVoice() {
   if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-    notify('Voice recognition not supported in this browser', 'error');
+    notify('Voice not supported — use Chrome browser, Sir', 'error');
     return;
   }
+  if (isListening) { stopVoice(); return; }
+  startVoice();
+}
 
-  if (isListening) {
-    stopVoice();
-    return;
-  }
-
+function startVoice() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
   recognition.continuous = false;
   recognition.interimResults = true;
-  recognition.lang = 'en-US';
+  recognition.lang = voiceLang; // hi-IN catches Hindi + Hinglish perfectly
 
   recognition.onstart = () => {
     isListening = true;
     document.getElementById('voiceIndicator').style.display = 'flex';
     document.getElementById('voiceBtn').classList.add('active');
-    addLog('sys', 'Voice input active');
+    document.getElementById('voiceBtn').textContent = '🔴';
+    document.getElementById('voiceStatus').style.display='block'; document.getElementById('voiceStatus').textContent = voiceLang === 'hi-IN' ? 'Sun raha hoon Sir...' : 'Listening Sir...';
+    addLog('sys', 'Voice active — ' + voiceLang);
+    if (jarvisSpeaking) stopJarvisSpeech();
   };
 
   recognition.onresult = (event) => {
-    const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
-    document.getElementById('userInput').value = transcript;
+    let interim = '';
+    let final = '';
+    for (let r of event.results) {
+      if (r.isFinal) final += r[0].transcript;
+      else interim += r[0].transcript;
+    }
+    const display = final || interim;
+    document.getElementById('userInput').value = display;
+    document.getElementById('voiceStatus').textContent = display;
   };
 
   recognition.onend = () => {
     isListening = false;
     document.getElementById('voiceIndicator').style.display = 'none';
     document.getElementById('voiceBtn').classList.remove('active');
+    document.getElementById('voiceBtn').textContent = '🎤';
     const text = document.getElementById('userInput').value.trim();
-    if (text) {
-      setTimeout(() => sendMessage(), 300);
-    }
+    if (text) setTimeout(() => sendMessage(), 200);
   };
 
   recognition.onerror = (event) => {
     isListening = false;
     document.getElementById('voiceIndicator').style.display = 'none';
     document.getElementById('voiceBtn').classList.remove('active');
-    notify(`Voice error: ${event.error}`, 'error');
+    document.getElementById('voiceBtn').textContent = '🎤';
+    if (event.error !== 'no-speech') notify('Voice error: ' + event.error, 'error');
   };
 
   recognition.start();
@@ -2706,6 +2798,78 @@ function stopVoice() {
   isListening = false;
   document.getElementById('voiceIndicator').style.display = 'none';
   document.getElementById('voiceBtn').classList.remove('active');
+  document.getElementById('voiceBtn').textContent = '🎤';
+}
+
+function toggleVoiceLang() {
+  voiceLang = voiceLang === 'hi-IN' ? 'en-US' : 'hi-IN';
+  const btn = document.getElementById('voiceLangBtn');
+  if (btn) btn.textContent = voiceLang === 'hi-IN' ? '🇮🇳 HI' : '🇺🇸 EN';
+  notify('Voice language: ' + (voiceLang === 'hi-IN' ? 'Hindi/Hinglish' : 'English'), 'success');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// JARVIS SPEAKS — Text to Speech
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let jarvisVoiceEnabled = false;
+
+function toggleJarvisVoice() {
+  jarvisVoiceEnabled = !jarvisVoiceEnabled;
+  const btn = document.getElementById('jarvisVoiceBtn');
+  if (jarvisVoiceEnabled) {
+    btn.style.borderColor = '#00ff88';
+    btn.style.color = '#00ff88';
+    btn.title = 'JARVIS Voice: ON';
+    notify('JARVIS will now speak, Sir', 'success');
+    // Test voice
+    jarvisSpeak('Voice output online, Sir.');
+  } else {
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    btn.title = 'Enable JARVIS Voice';
+    stopJarvisSpeech();
+    notify('JARVIS voice disabled', 'info');
+  }
+}
+
+function jarvisSpeak(text) {
+  if (!jarvisVoiceEnabled) return;
+  if (!window.speechSynthesis) return;
+
+  // Clean text for speech
+  const clean = text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/```[\s\S]*?```/g, 'code block')
+    .replace(/[#◈◉►▶→•]/g, '')
+    .replace(/Sir,/g, 'Sir.')
+    .slice(0, 300); // Max 300 chars for speech
+
+  stopJarvisSpeech();
+  const utterance = new SpeechSynthesisUtterance(clean);
+
+  // Find best voice — British male preferred
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(v => v.name.includes('Google UK English Male'))
+    || voices.find(v => v.name.includes('UK') && v.lang === 'en-GB')
+    || voices.find(v => v.lang === 'en-GB')
+    || voices.find(v => v.lang.startsWith('en'))
+    || voices[0];
+
+  if (preferred) utterance.voice = preferred;
+  utterance.rate = 0.92;
+  utterance.pitch = 0.85;
+  utterance.volume = 0.9;
+
+  utterance.onstart = () => { jarvisSpeaking = true; avatarTalking && avatarTalking(); };
+  utterance.onend = () => { jarvisSpeaking = false; avatarIdle && avatarIdle(); };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+function stopJarvisSpeech() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  jarvisSpeaking = false;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

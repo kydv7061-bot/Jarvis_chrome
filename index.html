@@ -1335,6 +1335,9 @@ body::before {
     <div style="padding:3px 10px;border:1px solid rgba(0,207,255,0.2);border-radius:2px;font-size:9px;letter-spacing:2px;color:#3a6070;display:flex;align-items:center;gap:5px;" id="extStatus">
   ◉ EXT OFFLINE
 </div>
+<button onclick="toggleProfile()" title="View your profile" style="padding:3px 10px;border:1px solid rgba(0,207,255,0.2);border-radius:2px;font-size:9px;letter-spacing:2px;color:#3a6070;background:transparent;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.color='#00cfff';this.style.borderColor='#00cfff'" onmouseout="this.style.color='#3a6070';this.style.borderColor='rgba(0,207,255,0.2)'">
+  👤 PROFILE
+</button>
 <div class="status-pill">
       <span class="status-dot"></span>
       <span id="aiStatus">ONLINE</span>
@@ -2768,6 +2771,133 @@ function setInputMode(mode) {
 
 // Auto-detect "I want to learn X" in chat
 const _origSendMessage = sendMessage;
+</script>
+
+
+<!-- PROFILE PANEL -->
+<div id="profilePanel" style="display:none;position:fixed;top:52px;right:0;width:320px;height:calc(100vh - 52px);background:#010810;border-left:1px solid rgba(0,207,255,0.2);z-index:150;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(0,207,255,0.2) transparent;">
+  <div style="padding:14px 16px;border-bottom:1px solid rgba(0,207,255,0.15);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#010810;z-index:1;">
+    <div style="font-family:Orbitron,sans-serif;font-size:9px;letter-spacing:4px;color:#00cfff;">◈ USER PROFILE</div>
+    <button onclick="document.getElementById('profilePanel').style.display='none'" style="background:transparent;border:none;color:#3a6070;cursor:pointer;font-size:14px;">✕</button>
+  </div>
+  <div id="profileContent" style="padding:16px;">
+    <div style="text-align:center;color:#3a6070;font-size:10px;letter-spacing:2px;padding:20px;">LOADING...</div>
+  </div>
+</div>
+
+<script>
+async function loadProfile() {
+  try {
+    const res = await fetch(API_BASE + '/api/profile');
+    const data = await res.json();
+    const m = data.profile;
+    const p = m.profile || {};
+    const cs = m.communicationStyle || {};
+    const bp = m.behaviorPatterns || {};
+
+    document.getElementById('profileContent').innerHTML = `
+      <!-- Identity -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:8px;letter-spacing:3px;color:#3a6070;margin-bottom:8px;">◈ IDENTITY</div>
+        ${profileRow('Name', p.name || 'Unknown')}
+        ${profileRow('Age', p.age || '—')}
+        ${profileRow('Location', p.location || '—')}
+        ${profileRow('Occupation', p.occupation || '—')}
+        ${profileRow('Messages', m.messageCount || 0)}
+        ${profileRow('First Seen', m.firstSeen ? new Date(m.firstSeen).toLocaleDateString() : '—')}
+      </div>
+
+      <!-- Skills -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:8px;letter-spacing:3px;color:#3a6070;margin-bottom:8px;">◈ TECHNICAL SKILLS</div>
+        ${Object.keys(m.skills||{}).length ? 
+          Object.entries(m.skills).map(([k,v]) => `
+            <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(0,207,255,0.06);">
+              <span style="font-size:11px;color:#b8e8ff;font-family:Share Tech Mono,monospace;">${k}</span>
+              <span style="font-size:9px;padding:2px 8px;border:1px solid ${v==='advanced'?'#00ff88':v==='intermediate'?'#ffd700':'#00cfff'};border-radius:10px;color:${v==='advanced'?'#00ff88':v==='intermediate'?'#ffd700':'#00cfff'};">${v}</span>
+            </div>`).join('') 
+          : '<div style="font-size:10px;color:#3a6070;">No skills detected yet</div>'}
+      </div>
+
+      <!-- Currently Learning -->
+      ${m.currentlyLearning?.length ? `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:8px;letter-spacing:3px;color:#3a6070;margin-bottom:8px;">◈ CURRENTLY LEARNING</div>
+        ${m.currentlyLearning.map(t => `<div style="display:inline-block;padding:3px 10px;margin:2px;background:rgba(0,207,255,0.08);border:1px solid rgba(0,207,255,0.2);border-radius:2px;font-size:10px;color:#00cfff;">${t}</div>`).join('')}
+      </div>` : ''}
+
+      <!-- Goals -->
+      ${m.goals?.length ? `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:8px;letter-spacing:3px;color:#3a6070;margin-bottom:8px;">◈ GOALS</div>
+        ${m.goals.slice(-5).map(g => `<div style="padding:5px 8px;margin-bottom:4px;background:rgba(255,215,0,0.04);border-left:2px solid rgba(255,215,0,0.3);font-size:10px;color:#b8e8ff;">${g}</div>`).join('')}
+      </div>` : ''}
+
+      <!-- Interests -->
+      ${m.interests?.length ? `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:8px;letter-spacing:3px;color:#3a6070;margin-bottom:8px;">◈ INTERESTS</div>
+        <div>${m.interests.slice(-10).map(i => `<span style="display:inline-block;padding:3px 8px;margin:2px;background:rgba(0,207,255,0.05);border:1px solid rgba(0,207,255,0.1);border-radius:2px;font-size:9px;color:#5a8090;">${i}</span>`).join('')}</div>
+      </div>` : ''}
+
+      <!-- Projects -->
+      ${m.projects?.length ? `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:8px;letter-spacing:3px;color:#3a6070;margin-bottom:8px;">◈ PROJECTS</div>
+        ${m.projects.map(p => `<div style="padding:4px 8px;margin-bottom:3px;border:1px solid rgba(0,207,255,0.1);border-radius:2px;font-size:10px;color:#5a8090;">⚡ ${p}</div>`).join('')}
+      </div>` : ''}
+
+      <!-- Communication Style -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:8px;letter-spacing:3px;color:#3a6070;margin-bottom:8px;">◈ HOW YOU COMMUNICATE</div>
+        ${profileRow('Language Style', cs.usesHinglish ? 'Hinglish 🇮🇳' : 'English')}
+        ${profileRow('Tech Level', cs.techLevel || 'Detecting...')}
+        ${profileRow('Prefers', cs.preferredExplanationStyle || 'Detecting...')}
+        ${profileRow('Answers', cs.prefersShortAnswers ? 'Short & crisp' : 'Detailed')}
+        ${profileRow('Learning Pace', bp.learningPace || 'Detecting...')}
+        ${profileRow('Style', bp.prefersStepByStep ? 'Step-by-step' : 'Overview first')}
+      </div>
+
+      <!-- Memory Facts -->
+      ${m.facts?.length ? `
+      <div style="margin-bottom:16px;">
+        <div style="font-size:8px;letter-spacing:3px;color:#3a6070;margin-bottom:8px;">◈ REMEMBERED (${m.facts.length})</div>
+        ${m.facts.slice(-8).map(f => `<div style="padding:4px 8px;margin-bottom:3px;font-size:9px;color:#5a8090;border-left:1px solid rgba(0,207,255,0.15);">• ${f}</div>`).join('')}
+      </div>` : ''}
+
+      <!-- Clear button -->
+      <button onclick="if(confirm('Clear all profile data?')) clearProfile()" 
+        style="width:100%;padding:8px;background:transparent;border:1px solid rgba(255,45,45,0.3);border-radius:2px;color:rgba(255,45,45,0.6);font-size:9px;font-family:Share Tech Mono,monospace;cursor:pointer;letter-spacing:2px;margin-top:8px;">
+        ✕ CLEAR PROFILE DATA
+      </button>
+    `;
+  } catch(e) {
+    document.getElementById('profileContent').innerHTML = '<div style="color:#ff2d2d;font-size:10px;">Could not load profile</div>';
+  }
+}
+
+function profileRow(label, value) {
+  return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(0,207,255,0.05);">
+    <span style="font-size:9px;color:#3a6070;letter-spacing:1px;">${label}</span>
+    <span style="font-size:10px;color:#b8e8ff;font-family:Share Tech Mono,monospace;">${value}</span>
+  </div>`;
+}
+
+async function clearProfile() {
+  await fetch(API_BASE + '/api/profile', { method: 'DELETE' });
+  notify('Profile cleared, Sir.', 'success');
+  loadProfile();
+}
+
+function toggleProfile() {
+  const panel = document.getElementById('profilePanel');
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    loadProfile();
+  } else {
+    panel.style.display = 'none';
+  }
+}
 </script>
 
 </body>

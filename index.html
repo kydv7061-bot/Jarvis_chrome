@@ -1813,6 +1813,9 @@ body::before {
       <button class="tone-btn" id="tone-friday" onclick="setTone('friday', this)">
         <span class="tone-icon">⚡</span>FRIDAY
       </button>
+      <button class="tone-btn" id="tone-genius" onclick="setTone('genius', this)" style="border-color:rgba(255,50,50,0.4);grid-column:span 2;">
+        <span class="tone-icon">🔥</span>GENIUS ROAST
+      </button>
     </div>
 
     <!-- Models -->
@@ -2253,7 +2256,8 @@ function setInputMode(mode) {
     search: 'MODE: WEB SEARCH',
     upload: 'MODE: FILE ANALYSIS',
     image: 'MODE: VISION ANALYSIS',
-    code: 'MODE: CODE EXECUTION'
+    code: 'MODE: CODE EXECUTION',
+    genius: 'MODE: GENIUS ROAST 🔥'
   };
 
   document.getElementById('userInput').placeholder = placeholders[mode] || placeholders.chat;
@@ -4175,15 +4179,6 @@ setInputMode = function(mode) {
   }
   _origSetInputMode2(mode);
 };
-import QREncoder from './components/QREncoder';
-
-// Phir jahan dikhana ho:
-<QREncoder />
-```
-
-## Step 5 — Commit & Push
-```
-Commit message: "feat: add JARVIS QR Encoder module"
 </script>
 
 </body>

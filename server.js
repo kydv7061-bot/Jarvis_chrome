@@ -884,10 +884,10 @@ Make all 10 steps.`
     // Ensure exactly 10 steps with all required fields
     steps = steps.slice(0, 10).map((s, i) => ({
       id: s.id || (i + 1),
-      title: s.title || \`Step \${i+1}\`,
+      title: s.title || `Step ${i+1}`,
       emoji: s.emoji || '📌',
       duration: s.duration || '15 min',
-      objective: \`Learn \${s.title}\`,
+      objective: `Learn ${s.title}`,
       theory: null,   // loaded on demand
       example: null,
       keyPoints: [],
@@ -899,7 +899,7 @@ Make all 10 steps.`
     while (steps.length < 10) {
       steps.push({
         id: steps.length + 1,
-        title: \`Advanced \${topic} - Part \${steps.length + 1}\`,
+        title: `Advanced ${topic} - Part ${steps.length + 1}`,
         emoji: '🚀',
         duration: '20 min',
         objective: 'Advanced concepts',
@@ -908,15 +908,15 @@ Make all 10 steps.`
     }
 
     const curriculum = {
-      title: \`\${topic} — \${level.charAt(0).toUpperCase()+level.slice(1)} Course\`,
-      description: \`Master \${topic} from \${level} to advanced level\`,
+      title: `${topic} — ${level.charAt(0).toUpperCase()+level.slice(1)} Course`,
+      description: `Master ${topic} from ${level} to advanced level`,
       totalSteps: 10,
       estimatedTime: '3-5 hours',
       steps
     };
 
     // Save session
-    const id = sessionId || \`learn_\${Date.now()}\`;
+    const id = sessionId || `learn_${Date.now()}`;
     learningSessions[id] = {
       topic, level, curriculum,
       currentStep: 1,
@@ -927,7 +927,7 @@ Make all 10 steps.`
     const memDir = path.join(__dirname, 'memory');
     if (!fs.existsSync(memDir)) fs.mkdirSync(memDir, { recursive: true });
     fs.writeFileSync(
-      path.join(memDir, \`session_\${id}.json\`),
+      path.join(memDir, `session_${id}.json`),
       JSON.stringify(learningSessions[id], null, 2)
     );
 

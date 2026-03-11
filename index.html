@@ -1332,7 +1332,10 @@ body::before {
     </div>
   </div>
   <div class="hud-right">
-    <div class="status-pill">
+    <div style="padding:3px 10px;border:1px solid rgba(0,207,255,0.2);border-radius:2px;font-size:9px;letter-spacing:2px;color:#3a6070;display:flex;align-items:center;gap:5px;" id="extStatus">
+  ◉ EXT OFFLINE
+</div>
+<div class="status-pill">
       <span class="status-dot"></span>
       <span id="aiStatus">ONLINE</span>
     </div>
@@ -1597,6 +1600,35 @@ let recognition = null;
 let pendingFile = null;
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EXTENSION BRIDGE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let extensionConnected = false;
+
+// Detect if Chrome extension is installed
+window.addEventListener('message', (event) => {
+  if (event.data?.type === 'JARVIS_EXTENSION_READY') {
+    extensionConnected = true;
+    document.getElementById('extStatus').textContent = '◉ EXTENSION ONLINE';
+    document.getElementById('extStatus').style.color = '#00ff88';
+    addLog('sys', 'Chrome Extension connected!');
+    notify('JARVIS Extension detected — Automation ONLINE!', 'success');
+  }
+  if (event.data?.type === 'JARVIS_RESULT') {
+    const typing = document.getElementById('typing');
+    typing.style.display = 'none';
+    if (event.data.result) {
+      addMessage('jarvis', '⚡ **AUTOMATION EXECUTED**\n\n' + event.data.result);
+    }
+  }
+});
+
+// Try to send command to extension
+function sendToExtension(text) {
+  window.postMessage({ type: 'JARVIS_EXECUTE', text }, '*');
+  return extensionConnected;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // BOOT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const bootMsgs = [
@@ -1830,8 +1862,19 @@ async function sendMessage() {
       chatHistory.push({ role: 'assistant', content: reply });
 
     } else {
-      // REGULAR CHAT
+      // REGULAR CHAT — first check if it's an automation command
       addMessage('user', text);
+
+      // Try extension automation first
+      if (extensionConnected) {
+        const sent = sendToExtension(text);
+        if (sent) {
+          // Give extension time to respond, if it handles it we get JARVIS_RESULT
+          // Meanwhile also get JARVIS commentary
+          chatHistory.push({ role: 'user', content: text });
+        }
+      }
+
       chatHistory.push({ role: 'user', content: text });
 
       if (streamMode) {

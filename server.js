@@ -557,6 +557,212 @@ app.post('/api/run-code', async (req, res) => {
   }
 });
 
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// LEARNING MODE — Step by Step Course System
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// In-memory learning sessions
+const learningSessions = {};
+
+// Generate full course curriculum
+app.post('/api/learn/start', async (req, res) => {
+  const { topic, level = 'beginner', sessionId } = req.body;
+
+  try {
+    const messages = [{
+      role: 'system',
+      content: `You are J.A.R.V.I.S, an expert teacher. Create a complete step-by-step learning curriculum.
+You must respond ONLY with valid JSON, no extra text.`
+    }, {
+      role: 'user',
+      content: `Create a complete learning curriculum for: "${topic}"
+Level: ${level}
+
+Respond with ONLY this JSON structure:
+{
+  "title": "Course title",
+  "description": "What student will achieve",
+  "totalSteps": 10,
+  "estimatedTime": "X hours",
+  "steps": [
+    {
+      "id": 1,
+      "title": "Step title",
+      "emoji": "📌",
+      "duration": "15 min",
+      "objective": "What you will learn",
+      "theory": "Detailed explanation of the concept (3-4 paragraphs)",
+      "example": "A practical code example or real-world example",
+      "keyPoints": ["point 1", "point 2", "point 3"],
+      "quiz": {
+        "question": "A question to test understanding",
+        "options": ["A) option", "B) option", "C) option", "D) option"],
+        "answer": "A",
+        "explanation": "Why this answer is correct"
+      },
+      "exercise": "A hands-on task or exercise for the student to do"
+    }
+  ]
+}
+
+Make exactly 10 steps. Each step must be detailed, practical and build on previous steps.`
+    }];
+
+    const data = await callGroq(messages, 'llama-3.3-70b-versatile');
+    const raw = data.choices[0].message.content;
+
+    // Parse JSON safely
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Invalid curriculum format');
+    const curriculum = JSON.parse(jsonMatch[0]);
+
+    // Save session
+    const id = sessionId || `learn_${Date.now()}`;
+    learningSessions[id] = {
+      topic,
+      level,
+      curriculum,
+      currentStep: 1,
+      completedSteps: [],
+      startedAt: new Date().toISOString()
+    };
+
+    // Also save to file for persistence
+    const memDir = require('path').join(__dirname, 'memory');
+    if (!fs.existsSync(memDir)) fs.mkdirSync(memDir, { recursive: true });
+    fs.writeFileSync(
+      require('path').join(memDir, `session_${id}.json`),
+      JSON.stringify(learningSessions[id], null, 2)
+    );
+
+    res.json({ success: true, sessionId: id, curriculum, currentStep: 1 });
+  } catch (err) {
+    console.error('Learn start error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get specific step content
+app.post('/api/learn/step', async (req, res) => {
+  const { sessionId, stepId, userAnswer } = req.body;
+
+  try {
+    // Load session
+    let session = learningSessions[sessionId];
+    if (!session) {
+      const filePath = require('path').join(__dirname, 'memory', `session_${sessionId}.json`);
+      if (fs.existsSync(filePath)) {
+        session = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        learningSessions[sessionId] = session;
+      } else {
+        return res.status(404).json({ error: 'Session not found' });
+      }
+    }
+
+    const step = session.curriculum.steps.find(s => s.id === stepId);
+    if (!step) return res.status(404).json({ error: 'Step not found' });
+
+    // If user submitted quiz answer, validate it
+    let quizFeedback = null;
+    if (userAnswer !== undefined) {
+      const isCorrect = userAnswer.toUpperCase() === step.quiz.answer.toUpperCase();
+      quizFeedback = {
+        correct: isCorrect,
+        explanation: step.quiz.explanation,
+        selectedAnswer: userAnswer,
+        correctAnswer: step.quiz.answer
+      };
+
+      // Mark step complete if answered
+      if (!session.completedSteps.includes(stepId)) {
+        session.completedSteps.push(stepId);
+        session.currentStep = Math.min(stepId + 1, session.curriculum.totalSteps);
+
+        // Save updated session
+        const filePath = require('path').join(__dirname, 'memory', `session_${sessionId}.json`);
+        fs.writeFileSync(filePath, JSON.stringify(session, null, 2));
+      }
+    }
+
+    res.json({
+      success: true,
+      step,
+      quizFeedback,
+      progress: {
+        current: stepId,
+        total: session.curriculum.totalSteps,
+        completed: session.completedSteps,
+        percentage: Math.round((session.completedSteps.length / session.curriculum.totalSteps) * 100)
+      },
+      isLastStep: stepId === session.curriculum.totalSteps
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Ask JARVIS a question about current lesson
+app.post('/api/learn/ask', async (req, res) => {
+  const { sessionId, stepId, question } = req.body;
+
+  try {
+    let session = learningSessions[sessionId];
+    if (!session) {
+      const filePath = require('path').join(__dirname, 'memory', `session_${sessionId}.json`);
+      if (fs.existsSync(filePath)) {
+        session = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      }
+    }
+
+    const step = session?.curriculum?.steps?.find(s => s.id === stepId);
+    const context = step ? `Current lesson: "${step.title}". Topic: ${step.theory}` : '';
+
+    const messages = [{
+      role: 'system',
+      content: `You are J.A.R.V.I.S, a brilliant teacher helping someone learn ${session?.topic || 'programming'}.
+${context}
+Answer the student's question clearly and concisely. Use examples. Address as "Sir".
+If they're confused, simplify. If they want more depth, provide it.`
+    }, {
+      role: 'user',
+      content: question
+    }];
+
+    const data = await callGroq(messages, 'llama-3.3-70b-versatile');
+    res.json({ reply: data.choices[0].message.content });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List all learning sessions
+app.get('/api/learn/sessions', (req, res) => {
+  try {
+    const memDir = require('path').join(__dirname, 'memory');
+    if (!fs.existsSync(memDir)) return res.json({ sessions: [] });
+
+    const files = fs.readdirSync(memDir).filter(f => f.startsWith('session_'));
+    const sessions = files.map(f => {
+      try {
+        const s = JSON.parse(fs.readFileSync(require('path').join(memDir, f), 'utf8'));
+        return {
+          sessionId: f.replace('session_', '').replace('.json', ''),
+          topic: s.topic,
+          level: s.level,
+          progress: Math.round((s.completedSteps.length / s.curriculum.totalSteps) * 100),
+          currentStep: s.currentStep,
+          startedAt: s.startedAt
+        };
+      } catch(e) { return null; }
+    }).filter(Boolean);
+
+    res.json({ sessions });
+  } catch (err) {
+    res.json({ sessions: [] });
+  }
+});
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // DESKTOP AGENT PROXY — forwards to Python agent
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

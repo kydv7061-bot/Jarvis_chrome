@@ -1341,8 +1341,15 @@ Use "chat" for everything else.` },
     try {
       const planText = planRes.choices[0].message.content;
       const jsonMatch = planText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) plan = { ...plan, ...JSON.parse(jsonMatch[0]) };
-    } catch(e) {}
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        plan = { ...plan, ...parsed };
+      }
+    } catch(e) {
+      console.log('[GODMODE] Plan parse failed, using chat fallback');
+    }
+    // Safety: ensure tone always has a fallback
+    const safeTone = (TONES[tone] || TONES.assistant) ? tone : 'assistant';
 
     let reply = '';
     let sources = null;
@@ -1365,8 +1372,7 @@ ${agentData.result}`;
           reply = `⚠️ Agent error: ${agentData.result}`;
         }
       } catch(e) {
-        reply = `⚠️ **Desktop Agent offline, Sir.**
-Run `python jarvis_agent_v2.py` to enable laptop control.`;
+        reply = '⚠️ **Desktop Agent offline, Sir.**\n\nLaptop control ke liye apne PC pe run karo: python jarvis_agent_v2.py';
       }
 
     } else if (plan.action === 'search' || plan.needs_realtime) {
@@ -1381,7 +1387,7 @@ Run `python jarvis_agent_v2.py` to enable laptop control.`;
         ].filter(Boolean).join('\n\n');
 
         const chatRes = await groqChat([
-          { role: 'system', content: TONES[tone] + userContext + `\nWeb search results for "${query}":\n${results.slice(0,2000)}` },
+          { role: 'system', content: ((TONES[tone] || TONES.assistant) || TONES.assistant) + userContext + `\nWeb search results for "${query}":\n${results.slice(0,2000)}` },
           ...history.slice(-8),
           { role: 'user', content: message }
         ], model);
@@ -1390,7 +1396,7 @@ Run `python jarvis_agent_v2.py` to enable laptop control.`;
       } catch(e) {
         // Fallback to chat
         const chatRes = await groqChat([
-          { role: 'system', content: TONES[tone] + userContext },
+          { role: 'system', content: ((TONES[tone] || TONES.assistant) || TONES.assistant) + userContext },
           ...history.slice(-8),
           { role: 'user', content: message }
         ], model);
@@ -1410,7 +1416,7 @@ Run `python jarvis_agent_v2.py` to enable laptop control.`;
     } else {
       // Regular chat
       const chatRes = await groqChat([
-        { role: 'system', content: TONES[tone] + userContext },
+        { role: 'system', content: ((TONES[tone] || TONES.assistant) || TONES.assistant) + userContext },
         ...history.slice(-10),
         { role: 'user', content: message }
       ], model);

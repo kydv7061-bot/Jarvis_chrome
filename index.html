@@ -351,6 +351,233 @@ body::before {
   margin-top:1px;
 }
 
+/* ══════════════ JARVIS AVATAR ══════════════ */
+.jarvis-avatar-wrap {
+  position: relative;
+  width: 140px;
+  height: 160px;
+  margin: 16px auto 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Rotating outer rings */
+.av-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(0,207,255,0.2);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -58%);
+}
+.av-ring-1 {
+  width: 120px; height: 120px;
+  border-color: rgba(0,207,255,0.15);
+  animation: avRing1 8s linear infinite;
+  border-style: dashed;
+}
+.av-ring-2 {
+  width: 104px; height: 104px;
+  border-color: rgba(0,207,255,0.25);
+  animation: avRing2 5s linear infinite reverse;
+}
+.av-ring-3 {
+  width: 88px; height: 88px;
+  border-color: rgba(0,207,255,0.1);
+  animation: avRing1 12s linear infinite;
+  border-style: dotted;
+}
+@keyframes avRing1 { to { transform: translate(-50%,-58%) rotate(360deg); } }
+@keyframes avRing2 { to { transform: translate(-50%,-58%) rotate(-360deg); } }
+
+/* Face circle */
+.av-face {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, rgba(0,40,60,0.9), rgba(0,5,15,0.95));
+  border: 1.5px solid rgba(0,207,255,0.5);
+  box-shadow: 0 0 20px rgba(0,207,255,0.2), inset 0 0 20px rgba(0,207,255,0.05);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 8px;
+  transition: box-shadow 0.3s;
+  cursor: pointer;
+}
+.av-face:hover {
+  box-shadow: 0 0 30px rgba(0,207,255,0.4), inset 0 0 20px rgba(0,207,255,0.1);
+}
+.av-face.talking {
+  box-shadow: 0 0 25px rgba(0,207,255,0.5), inset 0 0 15px rgba(0,207,255,0.1);
+  border-color: rgba(0,207,255,0.8);
+}
+.av-face.thinking {
+  box-shadow: 0 0 20px rgba(255,215,0,0.3), inset 0 0 15px rgba(255,215,0,0.05);
+  border-color: rgba(255,215,0,0.5);
+}
+
+/* Scan line */
+.av-scanline {
+  position: absolute;
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,207,255,0.6), transparent);
+  top: 0; left: 0;
+  animation: avScan 3s ease-in-out infinite;
+}
+@keyframes avScan {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* Eyes */
+.av-eyes {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 16px;
+  margin-top: 20px;
+  position: relative;
+  z-index: 2;
+}
+.av-eye {
+  width: 14px; height: 7px;
+  background: rgba(0,207,255,0.15);
+  border: 1px solid rgba(0,207,255,0.5);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+.av-face.talking .av-eye {
+  height: 5px;
+  background: rgba(0,207,255,0.3);
+  box-shadow: 0 0 6px rgba(0,207,255,0.4);
+}
+.av-pupil {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #00cfff;
+  box-shadow: 0 0 6px #00cfff;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  animation: avBlink 4s ease-in-out infinite;
+}
+@keyframes avBlink {
+  0%,90%,100% { transform: translate(-50%,-50%) scaleY(1); }
+  95% { transform: translate(-50%,-50%) scaleY(0.1); }
+}
+.av-glow-eye {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(0,207,255,0.3), transparent);
+  animation: avEyeGlow 2s ease-in-out infinite alternate;
+}
+@keyframes avEyeGlow {
+  from { opacity: 0.3; }
+  to { opacity: 1; }
+}
+
+/* Mouth — audio visualizer bars */
+.av-mouth {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  height: 14px;
+  margin-top: 6px;
+  padding: 0 18px;
+  position: relative;
+  z-index: 2;
+}
+.av-bar {
+  width: 4px;
+  background: linear-gradient(to top, rgba(0,207,255,0.8), rgba(0,207,255,0.3));
+  border-radius: 2px 2px 0 0;
+  height: 2px;
+  transition: height 0.1s ease;
+  box-shadow: 0 0 4px rgba(0,207,255,0.4);
+}
+.av-face.talking .av-bar:nth-child(1) { animation: avBar 0.4s ease-in-out infinite alternate; }
+.av-face.talking .av-bar:nth-child(2) { animation: avBar 0.3s ease-in-out infinite alternate 0.05s; }
+.av-face.talking .av-bar:nth-child(3) { animation: avBar 0.35s ease-in-out infinite alternate 0.1s; }
+.av-face.talking .av-bar:nth-child(4) { animation: avBar 0.28s ease-in-out infinite alternate 0.07s; }
+.av-face.talking .av-bar:nth-child(5) { animation: avBar 0.42s ease-in-out infinite alternate 0.03s; }
+@keyframes avBar {
+  from { height: 2px; }
+  to { height: 10px; }
+}
+.av-face.thinking .av-bar { animation: avBarThink 1s ease-in-out infinite alternate !important; }
+@keyframes avBarThink {
+  from { height: 2px; }
+  to { height: 5px; }
+}
+
+/* Core dot */
+.av-core {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #00cfff;
+  box-shadow: 0 0 10px #00cfff, 0 0 20px rgba(0,207,255,0.4);
+  position: absolute;
+  bottom: 14px;
+  left: 50%; transform: translateX(-50%);
+  animation: avCorePulse 2s ease-in-out infinite;
+}
+@keyframes avCorePulse {
+  0%,100% { box-shadow: 0 0 8px #00cfff, 0 0 16px rgba(0,207,255,0.3); transform: translateX(-50%) scale(1); }
+  50% { box-shadow: 0 0 16px #00cfff, 0 0 32px rgba(0,207,255,0.5); transform: translateX(-50%) scale(1.2); }
+}
+
+/* Data lines on sides of face */
+.av-data-l, .av-data-r {
+  position: absolute;
+  top: 30%; width: 8px; height: 1px;
+  background: rgba(0,207,255,0.5);
+  animation: avDataPulse 2s ease-in-out infinite;
+}
+.av-data-l { left: 4px; }
+.av-data-r { right: 4px; }
+@keyframes avDataPulse {
+  0%,100% { opacity: 0.3; width: 6px; }
+  50% { opacity: 1; width: 10px; }
+}
+
+/* Name + status */
+.av-name {
+  font-family: Orbitron, sans-serif;
+  font-size: 10px;
+  letter-spacing: 4px;
+  color: #00cfff;
+  text-shadow: 0 0 10px rgba(0,207,255,0.5);
+  margin-top: 4px;
+  text-align: center;
+}
+.av-status {
+  font-size: 7px;
+  letter-spacing: 1.5px;
+  color: #3a6070;
+  text-align: center;
+  margin-top: 2px;
+  transition: color 0.3s;
+}
+.av-status.talking { color: #00cfff; }
+.av-status.thinking { color: #ffd700; }
+
+/* Corner brackets */
+.av-bracket {
+  position: absolute;
+  width: 10px; height: 10px;
+  border-color: rgba(0,207,255,0.4);
+  border-style: solid;
+}
+.av-tl { top: 0; left: 0; border-width: 1px 0 0 1px; }
+.av-tr { top: 0; right: 0; border-width: 1px 1px 0 0; }
+.av-bl { bottom: 22px; left: 0; border-width: 0 0 1px 1px; }
+.av-br { bottom: 22px; right: 0; border-width: 0 1px 1px 0; }
+
 /* ══════════════ LEFT SIDEBAR ══════════════ */
 .sidebar-left {
   border-right: 1px solid var(--border);
@@ -1511,13 +1738,58 @@ body::before {
   <!-- LEFT SIDEBAR -->
   <div class="sidebar-left panel">
 
-    <!-- Arc Reactor Identity -->
-    <div class="arc-display">
-      <div class="arc-big">
-        <div class="arc-rings"></div>
+    <!-- JARVIS AVATAR -->
+    <div class="jarvis-avatar-wrap" id="avatarWrap">
+      
+      <!-- Outer scanning rings -->
+      <div class="av-ring av-ring-1"></div>
+      <div class="av-ring av-ring-2"></div>
+      <div class="av-ring av-ring-3"></div>
+
+      <!-- Main face circle -->
+      <div class="av-face" id="avFace">
+        
+        <!-- Scan line -->
+        <div class="av-scanline" id="avScanline"></div>
+
+        <!-- Eyes -->
+        <div class="av-eyes">
+          <div class="av-eye" id="avEyeL">
+            <div class="av-pupil"></div>
+            <div class="av-glow-eye"></div>
+          </div>
+          <div class="av-eye" id="avEyeR">
+            <div class="av-pupil"></div>
+            <div class="av-glow-eye"></div>
+          </div>
+        </div>
+
+        <!-- Mouth / Speaking indicator -->
+        <div class="av-mouth" id="avMouth">
+          <div class="av-bar" id="avB1"></div>
+          <div class="av-bar" id="avB2"></div>
+          <div class="av-bar" id="avB3"></div>
+          <div class="av-bar" id="avB4"></div>
+          <div class="av-bar" id="avB5"></div>
+        </div>
+
+        <!-- Center arc reactor dot -->
+        <div class="av-core" id="avCore"></div>
+
+        <!-- Data lines on face -->
+        <div class="av-data-l"></div>
+        <div class="av-data-r"></div>
       </div>
-      <div class="system-name">J.A.R.V.I.S</div>
-      <div class="system-ver">MARK III — v3.0.0 — STARK TECH</div>
+
+      <!-- Status text -->
+      <div class="av-name">J.A.R.V.I.S</div>
+      <div class="av-status" id="avStatus">◉ ONLINE — READY</div>
+
+      <!-- Corner brackets -->
+      <div class="av-bracket av-tl"></div>
+      <div class="av-bracket av-tr"></div>
+      <div class="av-bracket av-bl"></div>
+      <div class="av-bracket av-br"></div>
     </div>
 
     <!-- Tone Profile -->
@@ -1779,6 +2051,8 @@ window.addEventListener('message', (event) => {
   if (event.data?.type === 'JARVIS_RESULT') {
     const typing = document.getElementById('typing');
     typing.style.display = 'none';
+    avatarTalking();
+    setTimeout(avatarIdle, Math.min(reply ? reply.length * 30 : 2000, 5000));
     if (event.data.result) {
       addMessage('jarvis', '⚡ **AUTOMATION EXECUTED**\n\n' + event.data.result);
     }
@@ -1790,6 +2064,72 @@ function sendToExtension(text) {
   window.postMessage({ type: 'JARVIS_EXECUTE', text }, '*');
   return extensionConnected;
 }
+
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// JARVIS AVATAR CONTROLLER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const avFace   = document.getElementById('avFace');
+const avStatus = document.getElementById('avStatus');
+
+function avatarThinking() {
+  avFace.className = 'av-face thinking';
+  avStatus.className = 'av-status thinking';
+  avStatus.textContent = '◈ PROCESSING...';
+}
+
+function avatarTalking() {
+  avFace.className = 'av-face talking';
+  avStatus.className = 'av-status talking';
+  avStatus.textContent = '◉ RESPONDING';
+}
+
+function avatarIdle() {
+  avFace.className = 'av-face';
+  avStatus.className = 'av-status';
+  avStatus.textContent = '◉ ONLINE — READY';
+}
+
+function avatarError() {
+  avFace.style.borderColor = 'rgba(255,45,45,0.6)';
+  avFace.style.boxShadow = '0 0 20px rgba(255,45,45,0.3)';
+  avStatus.textContent = '⚠ ERROR DETECTED';
+  avStatus.style.color = '#ff2d2d';
+  setTimeout(() => {
+    avFace.style.borderColor = '';
+    avFace.style.boxShadow = '';
+    avStatus.style.color = '';
+    avatarIdle();
+  }, 2000);
+}
+
+// Click avatar to get a random JARVIS greeting
+document.getElementById('avFace').addEventListener('click', () => {
+  const greetings = [
+    "All systems nominal, Sir.",
+    "Arc reactor output: 3 gigajoules. We're good.",
+    "Standing by, Sir. What do you need?",
+    "Systems fully operational. Ready for your command.",
+    "I've been waiting, Sir.",
+    "Neural interface active. How may I assist?",
+  ];
+  const msg = greetings[Math.floor(Math.random() * greetings.length)];
+  avatarTalking();
+  addMessage('jarvis', msg);
+  setTimeout(avatarIdle, 2000);
+});
+
+// Idle animations — random eye movements
+setInterval(() => {
+  if (avFace.className === 'av-face') {
+    const eyes = document.querySelectorAll('.av-pupil');
+    const x = (Math.random() - 0.5) * 4;
+    const y = (Math.random() - 0.5) * 2;
+    eyes.forEach(e => {
+      e.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+    });
+  }
+}, 2000);
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // BOOT
@@ -2612,6 +2952,214 @@ setInterval(updateFakeStats, 5000);
 .quiz-option:hover { border-color: var(--blue); background: rgba(0,207,255,0.05); }
 .quiz-option.correct { border-color: #00ff88; background: rgba(0,255,136,0.08); color: #00ff88; }
 .quiz-option.wrong { border-color: var(--red); background: rgba(255,45,45,0.08); color: var(--red); }
+
+/* ══════════════ CODE EDITOR ══════════════ */
+#codeEditorPanel {
+  display: none;
+  position: fixed;
+  inset: 0;
+  padding-top: 52px;
+  z-index: 190;
+  background: #010810;
+  flex-direction: column;
+}
+
+.ce-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(0,207,255,0.15);
+  background: rgba(0,5,15,0.95);
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.ce-lang-btn {
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px solid rgba(0,207,255,0.2);
+  border-radius: 2px;
+  color: #5a8090;
+  font-family: Share Tech Mono, monospace;
+  font-size: 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.ce-lang-btn:hover, .ce-lang-btn.active {
+  border-color: #00cfff;
+  color: #00cfff;
+  background: rgba(0,207,255,0.08);
+}
+
+.ce-run-btn {
+  padding: 6px 20px;
+  background: linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,255,136,0.05));
+  border: 1px solid #00ff88;
+  border-radius: 2px;
+  color: #00ff88;
+  font-family: Orbitron, sans-serif;
+  font-size: 9px;
+  cursor: pointer;
+  letter-spacing: 3px;
+  transition: all 0.2s;
+}
+.ce-run-btn:hover {
+  background: rgba(0,255,136,0.2);
+  box-shadow: 0 0 12px rgba(0,255,136,0.3);
+}
+.ce-run-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ce-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.ce-editor-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(0,207,255,0.1);
+  overflow: hidden;
+}
+
+.ce-editor-label {
+  padding: 6px 14px;
+  font-size: 8px;
+  letter-spacing: 3px;
+  color: #3a6070;
+  border-bottom: 1px solid rgba(0,207,255,0.08);
+  background: rgba(0,207,255,0.02);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#ceEditor {
+  flex: 1;
+  background: #010810;
+  color: #e0f4ff;
+  font-family: 'Cascadia Code', 'Fira Code', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 16px;
+  border: none;
+  outline: none;
+  resize: none;
+  tab-size: 2;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,207,255,0.2) transparent;
+}
+
+.ce-right {
+  width: 420px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.ce-output-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid rgba(0,207,255,0.1);
+  overflow: hidden;
+}
+
+#ceOutput {
+  flex: 1;
+  background: #000a12;
+  color: #00ff88;
+  font-family: Share Tech Mono, monospace;
+  font-size: 11px;
+  padding: 14px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  scrollbar-width: thin;
+}
+
+.ce-ai-wrap {
+  height: 45%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#ceAiChat {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,207,255,0.1) transparent;
+}
+
+.ce-ai-msg {
+  margin-bottom: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.ce-ai-msg.user { color: #5a8090; }
+.ce-ai-msg.jarvis { color: #b8e8ff; }
+.ce-ai-msg .ce-who {
+  font-size: 8px;
+  letter-spacing: 2px;
+  margin-bottom: 3px;
+}
+.ce-ai-msg.user .ce-who { color: #3a6070; }
+.ce-ai-msg.jarvis .ce-who { color: #00cfff; }
+
+.ce-ai-input-row {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid rgba(0,207,255,0.1);
+  background: rgba(0,207,255,0.02);
+}
+.ce-ai-input-row input {
+  flex: 1;
+  background: rgba(0,207,255,0.04);
+  border: 1px solid rgba(0,207,255,0.15);
+  border-radius: 2px;
+  padding: 7px 10px;
+  color: #e0f4ff;
+  font-family: Share Tech Mono, monospace;
+  font-size: 11px;
+  outline: none;
+}
+.ce-ai-input-row input:focus { border-color: #00cfff; }
+.ce-ai-input-row button {
+  padding: 7px 14px;
+  background: transparent;
+  border: 1px solid rgba(0,207,255,0.3);
+  border-radius: 2px;
+  color: #00cfff;
+  font-size: 10px;
+  cursor: pointer;
+  font-family: Share Tech Mono, monospace;
+}
+
+.ce-line-nums {
+  padding: 16px 8px;
+  background: rgba(0,207,255,0.02);
+  border-right: 1px solid rgba(0,207,255,0.08);
+  color: #1a3040;
+  font-family: Share Tech Mono, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: right;
+  min-width: 36px;
+  user-select: none;
+  overflow: hidden;
+}
 </style>
 
 <script>
@@ -3142,6 +3690,491 @@ function initMobile() {
 // Run on load and resize
 window.addEventListener('load', initMobile);
 window.addEventListener('resize', initMobile);
+</script>
+
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- JARVIS CODE EDITOR                              -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="codeEditorPanel">
+
+  <!-- Header bar -->
+  <div class="ce-header">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="font-family:Orbitron,sans-serif;font-size:9px;letter-spacing:4px;color:#00cfff;">◈ CODE LAB</div>
+      <div style="width:1px;height:14px;background:rgba(0,207,255,0.2);"></div>
+      <!-- Language buttons -->
+      <button class="ce-lang-btn active" onclick="setEditorLang('javascript',this)" id="lang-javascript">JS</button>
+      <button class="ce-lang-btn" onclick="setEditorLang('python',this)" id="lang-python">PY</button>
+      <button class="ce-lang-btn" onclick="setEditorLang('java',this)" id="lang-java">JAVA</button>
+      <button class="ce-lang-btn" onclick="setEditorLang('cpp',this)" id="lang-cpp">C++</button>
+      <button class="ce-lang-btn" onclick="setEditorLang('html',this)" id="lang-html">HTML</button>
+      <button class="ce-lang-btn" onclick="setEditorLang('sql',this)" id="lang-sql">SQL</button>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;">
+      <!-- Actions -->
+      <button onclick="ceFormat()" style="padding:4px 12px;background:transparent;border:1px solid rgba(0,207,255,0.2);border-radius:2px;color:#3a6070;font-size:9px;font-family:Share Tech Mono,monospace;cursor:pointer;letter-spacing:1px;" title="Ask JARVIS to fix/improve code">✨ AI FIX</button>
+      <button onclick="ceExplain()" style="padding:4px 12px;background:transparent;border:1px solid rgba(0,207,255,0.2);border-radius:2px;color:#3a6070;font-size:9px;font-family:Share Tech Mono,monospace;cursor:pointer;letter-spacing:1px;" title="JARVIS explains your code">🔍 EXPLAIN</button>
+      <button onclick="ceClear()" style="padding:4px 12px;background:transparent;border:1px solid rgba(255,45,45,0.2);border-radius:2px;color:rgba(255,45,45,0.5);font-size:9px;font-family:Share Tech Mono,monospace;cursor:pointer;letter-spacing:1px;">✕ CLEAR</button>
+      <button onclick="ceRun()" class="ce-run-btn" id="ceRunBtn">▶ RUN</button>
+      <button onclick="closeCodeEditor()" style="padding:4px 14px;background:transparent;border:1px solid rgba(0,207,255,0.15);border-radius:2px;color:#3a6070;font-size:9px;font-family:Share Tech Mono,monospace;cursor:pointer;">✕ CLOSE</button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="ce-body">
+
+    <!-- Left: Editor -->
+    <div class="ce-editor-wrap">
+      <div class="ce-editor-label">
+        <span id="ceLangLabel">◈ JAVASCRIPT</span>
+        <span id="ceLineCount" style="color:#1a3040;">1 line</span>
+      </div>
+      <div style="display:flex;flex:1;overflow:hidden;">
+        <div class="ce-line-nums" id="ceLineNums">1</div>
+        <textarea id="ceEditor" 
+          spellcheck="false"
+          autocomplete="off"
+          autocorrect="off"
+          placeholder="// Write your code here, Sir...
+// Press Ctrl+Enter to run
+// Or click ▶ RUN button"
+          onkeydown="ceKeyDown(event)"
+          oninput="ceUpdateLines()"></textarea>
+      </div>
+    </div>
+
+    <!-- Right: Output + AI Chat -->
+    <div class="ce-right">
+
+      <!-- Output Terminal -->
+      <div class="ce-output-wrap">
+        <div class="ce-editor-label">
+          <span>◈ OUTPUT</span>
+          <button onclick="document.getElementById('ceOutput').textContent=''" style="background:transparent;border:none;color:#3a6070;font-size:9px;cursor:pointer;font-family:Share Tech Mono,monospace;">CLEAR</button>
+        </div>
+        <div id="ceOutput">Awaiting execution, Sir...</div>
+      </div>
+
+      <!-- JARVIS AI Chat about code -->
+      <div class="ce-ai-wrap">
+        <div class="ce-editor-label">
+          <span>◈ JARVIS ASSIST</span>
+          <span style="color:#1a3040;font-size:8px;">Ask about your code</span>
+        </div>
+        <div id="ceAiChat">
+          <div class="ce-ai-msg jarvis">
+            <div class="ce-who">J.A.R.V.I.S</div>
+            <div>Code Lab ready, Sir. Write code, run it, or ask me anything about it.</div>
+          </div>
+        </div>
+        <div class="ce-ai-input-row">
+          <input type="text" id="ceAiInput" placeholder="Ask JARVIS about your code..." 
+            onkeydown="if(event.key==='Enter') ceAskJarvis()" />
+          <button onclick="ceAskJarvis()">ASK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// JARVIS CODE EDITOR
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let ceCurrentLang = 'javascript';
+
+const CE_TEMPLATES = {
+  javascript: `// JavaScript — Run directly in browser
+function greet(name) {
+  return `Hello, \${name}! Welcome to JARVIS Code Lab.`;
+}
+
+console.log(greet('Sir'));
+
+// Try: arrays, loops, functions, DOM
+const nums = [1, 2, 3, 4, 5];
+const doubled = nums.map(n => n * 2);
+console.log('Doubled:', doubled);`,
+
+  python: `# Python — JARVIS will analyze & explain
+def greet(name):
+    return f"Hello, {name}! Welcome to JARVIS Code Lab."
+
+print(greet("Sir"))
+
+# Fibonacci
+def fib(n):
+    a, b = 0, 1
+    for _ in range(n):
+        print(a, end=' ')
+        a, b = b, a + b
+
+fib(10)`,
+
+  java: `// Java — JARVIS will review your code
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello Sir! JARVIS Code Lab.");
+        
+        // Variables
+        int x = 10;
+        int y = 20;
+        System.out.println("Sum: " + (x + y));
+        
+        // Loop
+        for (int i = 1; i <= 5; i++) {
+            System.out.println("Step " + i);
+        }
+    }
+}`,
+
+  cpp: `// C++ — JARVIS will analyze
+#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    cout << "Hello Sir! JARVIS Code Lab." << endl;
+    
+    vector<int> nums = {1, 2, 3, 4, 5};
+    int sum = 0;
+    for (int n : nums) sum += n;
+    cout << "Sum: " << sum << endl;
+    
+    return 0;
+}`,
+
+  html: `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { background: #010810; color: #00cfff; font-family: monospace; }
+    h1 { text-shadow: 0 0 10px #00cfff; }
+    button { padding: 10px 20px; background: transparent; border: 1px solid #00cfff; color: #00cfff; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>J.A.R.V.I.S Interface</h1>
+  <p>Hello Sir! Edit this HTML and see live preview.</p>
+  <button onclick="alert('Arc reactor online!')">Activate</button>
+</body>
+</html>`,
+
+  sql: `-- SQL — JARVIS will explain queries
+-- Sample: Create and query a table
+
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  age INTEGER,
+  city TEXT
+);
+
+INSERT INTO users VALUES (1, 'Tony Stark', 43, 'New York');
+INSERT INTO users VALUES (2, 'Pepper Potts', 39, 'Malibu');
+INSERT INTO users VALUES (3, 'Nick Fury', 55, 'Washington');
+
+SELECT name, city FROM users WHERE age > 40;
+SELECT COUNT(*) as total FROM users;`
+};
+
+function openCodeEditor() {
+  document.getElementById('codeEditorPanel').style.display = 'flex';
+  // Load template if editor is empty
+  const ed = document.getElementById('ceEditor');
+  if (!ed.value.trim()) {
+    ed.value = CE_TEMPLATES[ceCurrentLang];
+  }
+  ceUpdateLines();
+}
+
+function closeCodeEditor() {
+  document.getElementById('codeEditorPanel').style.display = 'none';
+  setInputMode('chat');
+}
+
+function setEditorLang(lang, btn) {
+  ceCurrentLang = lang;
+  document.querySelectorAll('.ce-lang-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('ceLangLabel').textContent = '◈ ' + lang.toUpperCase();
+  
+  // Ask if they want template
+  const ed = document.getElementById('ceEditor');
+  if (!ed.value.trim() || confirm('Load ' + lang + ' template?')) {
+    ed.value = CE_TEMPLATES[lang] || '// Write your ' + lang + ' code here...';
+    ceUpdateLines();
+  }
+  document.getElementById('ceOutput').textContent = 'Language switched to ' + lang.toUpperCase() + ', Sir.';
+}
+
+function ceUpdateLines() {
+  const ed = document.getElementById('ceEditor');
+  const lines = ed.value.split('
+').length;
+  const nums = document.getElementById('ceLineNums');
+  nums.textContent = Array.from({length: lines}, (_, i) => i + 1).join('
+');
+  document.getElementById('ceLineCount').textContent = lines + ' line' + (lines !== 1 ? 's' : '');
+}
+
+function ceKeyDown(e) {
+  const ed = document.getElementById('ceEditor');
+  
+  // Tab → 2 spaces
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const start = ed.selectionStart;
+    const end = ed.selectionEnd;
+    ed.value = ed.value.substring(0, start) + '  ' + ed.value.substring(end);
+    ed.selectionStart = ed.selectionEnd = start + 2;
+    ceUpdateLines();
+  }
+  
+  // Ctrl+Enter → Run
+  if (e.key === 'Enter' && e.ctrlKey) {
+    e.preventDefault();
+    ceRun();
+  }
+  
+  // Ctrl+/ → Comment/uncomment
+  if (e.key === '/' && e.ctrlKey) {
+    e.preventDefault();
+    ceToggleComment();
+  }
+}
+
+function ceToggleComment() {
+  const ed = document.getElementById('ceEditor');
+  const lines = ed.value.split('
+');
+  const start = ed.value.substring(0, ed.selectionStart).split('
+').length - 1;
+  const prefix = ceCurrentLang === 'python' ? '# ' : '// ';
+  lines[start] = lines[start].startsWith(prefix) 
+    ? lines[start].slice(prefix.length) 
+    : prefix + lines[start];
+  ed.value = lines.join('
+');
+}
+
+async function ceRun() {
+  const code = document.getElementById('ceEditor').value.trim();
+  if (!code) return;
+  
+  const out = document.getElementById('ceOutput');
+  const btn = document.getElementById('ceRunBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ RUNNING';
+  
+  out.style.color = '#00cfff';
+  out.textContent = '> Executing ' + ceCurrentLang.toUpperCase() + ' code...
+';
+
+  try {
+    if (ceCurrentLang === 'javascript') {
+      // Run JS directly in browser
+      const logs = [];
+      const origLog = console.log;
+      const origErr = console.error;
+      const origWarn = console.warn;
+      
+      console.log = (...args) => { logs.push('> ' + args.map(String).join(' ')); origLog(...args); };
+      console.error = (...args) => { logs.push('✕ ' + args.map(String).join(' ')); origErr(...args); };
+      console.warn = (...args) => { logs.push('⚠ ' + args.map(String).join(' ')); origWarn(...args); };
+      
+      try {
+        const result = eval(code);
+        if (result !== undefined) logs.push('→ ' + String(result));
+      } catch(evalErr) {
+        logs.push('✕ Error: ' + evalErr.message);
+        out.style.color = '#ff4444';
+      }
+      
+      console.log = origLog;
+      console.error = origErr;
+      console.warn = origWarn;
+      
+      out.style.color = logs.some(l => l.startsWith('✕')) ? '#ff4444' : '#00ff88';
+      out.textContent = logs.length ? logs.join('
+') : '→ (no output)';
+
+    } else if (ceCurrentLang === 'html') {
+      // Open HTML in new tab
+      const blob = new Blob([code], {type: 'text/html'});
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      out.style.color = '#00ff88';
+      out.textContent = '✓ HTML opened in new tab, Sir!
+
+Edit and run again to update.';
+
+    } else {
+      // Python/Java/C++/SQL → Send to JARVIS for analysis + explanation
+      out.style.color = '#ffd700';
+      out.textContent = '> Sending to JARVIS for analysis...
+
+Note: ' + ceCurrentLang + ' runs server-side.
+JARVIS will analyze your code and show expected output.';
+      
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Analyze this ${ceCurrentLang} code and show:
+1. What this code does (1 line)
+2. Expected OUTPUT (exactly what would print, in a code block)
+3. Any bugs or improvements
+
+Code:
+```${ceCurrentLang}
+${code}
+````,
+          history: [],
+          tone: 'coder',
+          model: currentModel
+        })
+      });
+      const data = await res.json();
+      
+      // Show output in terminal style
+      out.style.color = '#00ff88';
+      // Extract just the output section
+      const reply = data.reply || '';
+      const outputMatch = reply.match(/```[\w]*
+([\s\S]*?)```/);
+      if (outputMatch) {
+        out.textContent = '> Expected Output:
+
+' + outputMatch[1];
+      } else {
+        out.textContent = '> Analysis complete. Check JARVIS Assist below.';
+      }
+      
+      // Add to AI chat
+      ceAddAiMsg('jarvis', data.reply || 'Analysis complete, Sir.');
+    }
+  } catch(err) {
+    out.style.color = '#ff4444';
+    out.textContent = '✕ Error: ' + err.message;
+  }
+  
+  btn.disabled = false;
+  btn.textContent = '▶ RUN';
+}
+
+async function ceFormat() {
+  const code = document.getElementById('ceEditor').value.trim();
+  if (!code) { notify('Code likhiye pehle, Sir!', 'error'); return; }
+  
+  ceAddAiMsg('user', 'Fix and improve this code');
+  document.getElementById('ceOutput').textContent = '> JARVIS fixing your code...';
+  
+  const res = await fetch(`${API_BASE}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: `Fix bugs, improve this ${ceCurrentLang} code, and return the corrected version in a code block:
+```${ceCurrentLang}
+${code}
+````,
+      history: [],
+      tone: 'coder',
+      model: currentModel
+    })
+  });
+  const data = await res.json();
+  const match = data.reply?.match(/```[\w]*
+([\s\S]*?)```/);
+  if (match) {
+    document.getElementById('ceEditor').value = match[1];
+    ceUpdateLines();
+    document.getElementById('ceOutput').textContent = '✓ Code fixed by JARVIS, Sir!';
+  }
+  ceAddAiMsg('jarvis', data.reply);
+}
+
+async function ceExplain() {
+  const code = document.getElementById('ceEditor').value.trim();
+  if (!code) { notify('Code likhiye pehle, Sir!', 'error'); return; }
+  
+  ceAddAiMsg('user', 'Explain this code');
+  
+  const res = await fetch(`${API_BASE}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: `Explain this ${ceCurrentLang} code line by line in simple terms:
+```${ceCurrentLang}
+${code}
+````,
+      history: [],
+      tone: 'coder',
+      model: currentModel
+    })
+  });
+  const data = await res.json();
+  ceAddAiMsg('jarvis', data.reply);
+}
+
+async function ceAskJarvis() {
+  const q = document.getElementById('ceAiInput').value.trim();
+  if (!q) return;
+  document.getElementById('ceAiInput').value = '';
+  
+  const code = document.getElementById('ceEditor').value.trim();
+  ceAddAiMsg('user', q);
+  
+  const res = await fetch(`${API_BASE}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: q + (code ? `
+
+Context - My current ${ceCurrentLang} code:
+```${ceCurrentLang}
+${code.slice(0,500)}
+```` : ''),
+      history: [],
+      tone: 'coder',
+      model: currentModel
+    })
+  });
+  const data = await res.json();
+  ceAddAiMsg('jarvis', data.reply);
+}
+
+function ceAddAiMsg(who, text) {
+  const chat = document.getElementById('ceAiChat');
+  const div = document.createElement('div');
+  div.className = 'ce-ai-msg ' + who;
+  div.innerHTML = `<div class="ce-who">${who === 'jarvis' ? 'J.A.R.V.I.S' : 'SIR'}</div><div>${formatText(text)}</div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function ceClear() {
+  document.getElementById('ceEditor').value = '';
+  document.getElementById('ceOutput').textContent = 'Editor cleared, Sir.';
+  ceUpdateLines();
+}
+
+// Override setInputMode for code tab
+const _origSetInputMode2 = setInputMode;
+setInputMode = function(mode) {
+  if (mode === 'code') {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-code').classList.add('active');
+    openCodeEditor();
+    return;
+  }
+  if (mode !== 'code') {
+    document.getElementById('codeEditorPanel').style.display = 'none';
+  }
+  _origSetInputMode2(mode);
+};
 </script>
 
 </body>

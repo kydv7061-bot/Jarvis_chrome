@@ -68,7 +68,7 @@ const sessions = {};
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // GROQ API HELPER
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-async function callGroq(messages, model = 'llama3-70b-8192', stream = false) {
+async function callGroq(messages, model = 'llama-3.3-70b-versatile', stream = false) {
   const fetch = (await import('node-fetch')).default;
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -235,7 +235,7 @@ app.get('/api/health', (req, res) => {
 
 // CHAT — Main endpoint
 app.post('/api/chat', async (req, res) => {
-  const { message, history = [], tone = 'assistant', model = 'llama3-70b-8192', sessionId } = req.body;
+  const { message, history = [], tone = 'assistant', model = 'llama-3.3-70b-versatile', sessionId } = req.body;
 
   if (!process.env.GROQ_API_KEY) {
     return res.status(500).json({ error: 'GROQ_API_KEY not configured on server' });
@@ -262,7 +262,7 @@ app.post('/api/chat', async (req, res) => {
       try {
         const memExtract = await callGroq([{
           role: 'system', content: 'Extract any personal facts, preferences, or important info about the user from this message. Reply with a short JSON array of strings, or empty array []. Only facts worth remembering long-term.'
-        }, { role: 'user', content: message }], 'llama3-8b-8192');
+        }, { role: 'user', content: message }], 'llama-3.1-8b-instant');
         const text = memExtract.choices[0].message.content;
         const match = text.match(/\[.*?\]/s);
         if (match) {
@@ -291,7 +291,7 @@ app.post('/api/chat', async (req, res) => {
 
 // STREAMING CHAT
 app.post('/api/chat/stream', async (req, res) => {
-  const { message, history = [], tone = 'assistant', model = 'llama3-70b-8192' } = req.body;
+  const { message, history = [], tone = 'assistant', model = 'llama-3.3-70b-versatile' } = req.body;
 
   if (!process.env.GROQ_API_KEY) {
     return res.status(500).json({ error: 'GROQ_API_KEY not configured' });
@@ -337,7 +337,7 @@ app.post('/api/chat/stream', async (req, res) => {
 
 // WEB SEARCH
 app.post('/api/search', async (req, res) => {
-  const { query, model = 'llama3-70b-8192', tone = 'assistant' } = req.body;
+  const { query, model = 'llama-3.3-70b-versatile', tone = 'assistant' } = req.body;
 
   try {
     // Search web
@@ -367,7 +367,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
   try {
     const text = await extractFileText(req.file.path, req.file.mimetype);
-    const { tone = 'assistant', model = 'llama3-70b-8192', instruction = 'Analyze this file and provide key insights.' } = req.body;
+    const { tone = 'assistant', model = 'llama-3.3-70b-versatile', instruction = 'Analyze this file and provide key insights.' } = req.body;
 
     const messages = [
       { role: 'system', content: TONES[tone] || TONES.assistant },
@@ -451,11 +451,11 @@ app.post('/api/vision', upload.single('image'), async (req, res) => {
 app.get('/api/models', (req, res) => {
   res.json({
     models: [
-      { id: 'llama3-70b-8192', name: 'LLaMA 3 70B', type: 'flagship', speed: 'fast' },
-      { id: 'llama3-8b-8192', name: 'LLaMA 3 8B', type: 'quick', speed: 'ultra-fast' },
+      { id: 'llama-3.3-70b-versatile', name: 'LLaMA 3 70B', type: 'flagship', speed: 'fast' },
+      { id: 'llama-3.1-8b-instant', name: 'LLaMA 3 8B', type: 'quick', speed: 'ultra-fast' },
       { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', type: 'mixed', speed: 'fast' },
       { id: 'gemma2-9b-it', name: 'Gemma 2 9B', type: 'google', speed: 'fast' },
-      { id: 'llama-3.1-70b-versatile', name: 'LLaMA 3.1 70B', type: 'latest', speed: 'fast' },
+      { id: 'llama-3.3-70b-versatile', name: 'LLaMA 3.1 70B', type: 'latest', speed: 'fast' },
       { id: 'llama-3.2-11b-vision-preview', name: 'LLaMA 3.2 Vision', type: 'vision', speed: 'fast' }
     ]
   });

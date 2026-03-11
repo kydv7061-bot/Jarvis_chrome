@@ -2210,6 +2210,85 @@ async function deepThinkSend(message) {
   avatarIdle && avatarIdle();
 }
 
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// GOD MODE — JARVIS AUTONOMOUS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let godModeAlwaysOn = false;
+
+function openGodMode() {
+  document.getElementById('godModeOverlay').style.display = 'flex';
+  document.getElementById('godInput').focus();
+}
+
+function closeGodMode() {
+  document.getElementById('godModeOverlay').style.display = 'none';
+}
+
+function toggleGodModeAlways() {
+  godModeAlwaysOn = !godModeAlwaysOn;
+  const btn = document.getElementById('godModeToggle');
+  if (godModeAlwaysOn) {
+    btn.classList.add('active-god');
+    btn.textContent = '🔥 GOD ON';
+    notify('God Mode ALWAYS ON — JARVIS decides everything, Sir', 'success');
+  } else {
+    btn.classList.remove('active-god');
+    btn.textContent = '⚡ GOD MODE';
+    notify('God Mode off', 'info');
+  }
+}
+
+async function godSend() {
+  const input = document.getElementById('godInput');
+  const message = input.value.trim();
+  if (!message) return;
+
+  const status = document.getElementById('godStatus');
+  status.textContent = '◈ JARVIS analyzing...';
+  status.style.color = '#ffa500';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/godmode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        history: chatHistory.slice(-8),
+        tone: currentTone,
+        model: currentModel
+      })
+    });
+    const data = await res.json();
+
+    status.textContent = `✓ Action: ${data.action_taken?.toUpperCase() || 'DONE'}`;
+    status.style.color = '#00ff88';
+
+    // Add to main chat
+    closeGodMode();
+    addMessage('user', message);
+    chatHistory.push({ role: 'user', content: message });
+    addMessage('jarvis', data.reply, data.sources);
+    chatHistory.push({ role: 'assistant', content: data.reply });
+
+    input.value = '';
+    setTimeout(() => { status.style.color = '#5a4020'; status.textContent = 'Ctrl+Enter to send'; }, 3000);
+
+  } catch(err) {
+    status.textContent = '✕ Error: ' + err.message;
+    status.style.color = '#ff4444';
+  }
+}
+
+// God Mode keyboard shortcut: Ctrl+Shift+G
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.shiftKey && e.key === 'G') {
+    e.preventDefault();
+    openGodMode();
+  }
+  if (e.key === 'Escape') closeGodMode();
+});
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // BOOT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -4030,12 +4109,112 @@ int main() {
     body { background: #010810; color: #00cfff; font-family: monospace; }
     h1 { text-shadow: 0 0 10px #00cfff; }
     button { padding: 10px 20px; background: transparent; border: 1px solid #00cfff; color: #00cfff; cursor: pointer; }
-  </style>
+  
+/* ══════════════ GOD MODE ══════════════ */
+#godModeOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.god-panel {
+  width: 480px;
+  border: 1px solid rgba(255,165,0,0.4);
+  background: rgba(0,5,15,0.98);
+  box-shadow: 0 0 60px rgba(255,165,0,0.15), 0 0 120px rgba(255,165,0,0.05);
+  padding: 32px;
+  text-align: center;
+  position: relative;
+}
+.god-title {
+  font-family: Orbitron, sans-serif;
+  font-size: 11px;
+  letter-spacing: 8px;
+  color: #ffa500;
+  text-shadow: 0 0 20px rgba(255,165,0,0.5);
+  margin-bottom: 8px;
+}
+.god-sub {
+  font-size: 10px;
+  color: #5a4020;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+}
+.god-input {
+  width: 100%;
+  background: rgba(255,165,0,0.04);
+  border: 1px solid rgba(255,165,0,0.2);
+  padding: 14px 16px;
+  color: #e0d4c0;
+  font-family: Share Tech Mono, monospace;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+}
+.god-input:focus { border-color: #ffa500; box-shadow: 0 0 12px rgba(255,165,0,0.2); }
+.god-send {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, rgba(255,165,0,0.15), rgba(255,100,0,0.1));
+  border: 1px solid #ffa500;
+  color: #ffa500;
+  font-family: Orbitron, sans-serif;
+  font-size: 9px;
+  letter-spacing: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.god-send:hover { background: rgba(255,165,0,0.2); box-shadow: 0 0 20px rgba(255,165,0,0.3); }
+.god-status { font-size: 9px; color: #5a4020; margin-top: 8px; letter-spacing: 2px; min-height: 16px; }
+.god-close {
+  position: absolute; top: 12px; right: 16px;
+  background: none; border: none; color: #5a4020;
+  font-size: 14px; cursor: pointer;
+}
+.god-close:hover { color: #ffa500; }
+.god-mode-btn {
+  padding: 6px 16px;
+  background: linear-gradient(135deg, rgba(255,165,0,0.1), rgba(255,80,0,0.05));
+  border: 1px solid rgba(255,165,0,0.4);
+  color: #ffa500;
+  font-family: Orbitron, sans-serif;
+  font-size: 8px;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 2px;
+}
+.god-mode-btn:hover { box-shadow: 0 0 16px rgba(255,165,0,0.3); }
+.god-mode-btn.active-god {
+  background: rgba(255,165,0,0.15);
+  box-shadow: 0 0 12px rgba(255,165,0,0.3);
+}
+</style>
 </head>
 <body>
   <h1>J.A.R.V.I.S Interface</h1>
   <p>Hello Sir! Edit this HTML and see live preview.</p>
   <button onclick="alert('Arc reactor online!')">Activate</button>
+
+<!-- ═══════════ GOD MODE OVERLAY ═══════════ -->
+<div id="godModeOverlay">
+  <div class="god-panel">
+    <button class="god-close" onclick="closeGodMode()">✕</button>
+    <div class="god-title">◈ GOD MODE ◈</div>
+    <div class="god-sub">JARVIS AUTONOMOUS INTELLIGENCE — FULL CONTROL</div>
+    <textarea class="god-input" id="godInput" rows="3" 
+      placeholder="Tell JARVIS anything... it will figure out what to do.&#10;'open spotify and play lofi'&#10;'send whatsapp to mom: coming home late'&#10;'what's happening in AI today?'"
+      onkeydown="if(event.ctrlKey&&event.key==='Enter')godSend()"></textarea>
+    <button class="god-send" onclick="godSend()">▶ EXECUTE — JARVIS DECIDES</button>
+    <div class="god-status" id="godStatus">Ctrl+Enter to send</div>
+  </div>
+</div>
+
 </body>
 </html>`,
 
@@ -4353,6 +4532,21 @@ setInputMode = function(mode) {
   _origSetInputMode2(mode);
 };
 </script>
+
+
+<!-- ═══════════ GOD MODE OVERLAY ═══════════ -->
+<div id="godModeOverlay">
+  <div class="god-panel">
+    <button class="god-close" onclick="closeGodMode()">✕</button>
+    <div class="god-title">◈ GOD MODE ◈</div>
+    <div class="god-sub">JARVIS AUTONOMOUS INTELLIGENCE — FULL CONTROL</div>
+    <textarea class="god-input" id="godInput" rows="3" 
+      placeholder="Tell JARVIS anything... it will figure out what to do.&#10;'open spotify and play lofi'&#10;'send whatsapp to mom: coming home late'&#10;'what's happening in AI today?'"
+      onkeydown="if(event.ctrlKey&&event.key==='Enter')godSend()"></textarea>
+    <button class="god-send" onclick="godSend()">▶ EXECUTE — JARVIS DECIDES</button>
+    <div class="god-status" id="godStatus">Ctrl+Enter to send</div>
+  </div>
+</div>
 
 </body>
 </html>

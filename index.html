@@ -2255,6 +2255,15 @@ async function checkServerAndBoot() {
 }
 
 function bootComplete() {
+  // Auto voice hint
+  setTimeout(() => {
+    const vBtn = document.getElementById('jarvisVoiceBtn');
+    if (vBtn) {
+      vBtn.style.animation = 'pulse 1s ease-in-out 3';
+      vBtn.title = 'Click to enable JARVIS voice — Sir';
+    }
+  }, 3000);
+
   addMessage('jarvis', `Good day, Sir. All J.A.R.V.I.S systems are fully operational.\n\nI am running on **${currentModel}** in **${currentTone.toUpperCase()}** mode.\n\nI am equipped with:\n- 🧠 **Persistent Memory** — I remember things about you across sessions\n- 🌐 **Web Search** — Real-time internet access\n- 📎 **File Analysis** — PDF, DOCX, images, code files\n- 🎤 **Voice Input** — Speak your commands\n- 👁️ **Vision** — Analyze images\n- ⚡ **Streaming** — Real-time response generation\n\nHow may I assist you today?`);
   loadMemoryDisplay();
   addLog('sys', 'Boot sequence complete');

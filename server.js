@@ -415,7 +415,7 @@ app.post('/api/vision', upload.single('image'), async (req, res) => {
 
   try {
     const imageData = fs.readFileSync(req.file.path).toString('base64');
-    const { question = 'Analyze this image in detail.', tone = 'assistant', model = 'llama-3.2-11b-vision-preview' } = req.body;
+    const { question = 'Analyze this image in detail.', tone = 'assistant', model = 'llama-3.2-90b-vision-preview' } = req.body;
 
     const fetch = (await import('node-fetch')).default;
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -456,7 +456,7 @@ app.get('/api/models', (req, res) => {
       { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', type: 'mixed', speed: 'fast' },
       { id: 'gemma2-9b-it', name: 'Gemma 2 9B', type: 'google', speed: 'fast' },
       { id: 'llama-3.3-70b-versatile', name: 'LLaMA 3.1 70B', type: 'latest', speed: 'fast' },
-      { id: 'llama-3.2-11b-vision-preview', name: 'LLaMA 3.2 Vision', type: 'vision', speed: 'fast' }
+      { id: 'llama-3.2-90b-vision-preview', name: 'LLaMA 3.2 Vision', type: 'vision', speed: 'fast' }
     ]
   });
 });

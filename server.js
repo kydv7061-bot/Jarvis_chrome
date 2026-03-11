@@ -281,21 +281,264 @@ async function extractFileText(filePath, mimetype) {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const MEMORY_FILE = path.join(__dirname, 'memory', 'jarvis_memory.json');
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DEEP USER PROFILE DATABASE
+// Tracks: identity, skills, goals, behavior patterns,
+//         communication style, preferences, history
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 function loadMemory() {
   try {
     if (fs.existsSync(MEMORY_FILE)) {
-      return JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8'));
+      const data = JSON.parse(fs.readFileSync(MEMORY_FILE, 'utf8'));
+      // Migrate old format to new
+      if (!data.profile) data.profile = {};
+      if (!data.skills) data.skills = {};
+      if (!data.goals) data.goals = [];
+      if (!data.behaviorPatterns) data.behaviorPatterns = {};
+      if (!data.communicationStyle) data.communicationStyle = {};
+      if (!data.interests) data.interests = [];
+      if (!data.projects) data.projects = [];
+      if (!data.sessionHistory) data.sessionHistory = [];
+      if (!data.facts) data.facts = [];
+      if (!data.messageCount) data.messageCount = 0;
+      return data;
     }
   } catch(e) {}
-  return { facts: [], preferences: {}, conversations: [] };
+  return {
+    // Basic identity
+    profile: {
+      name: null,
+      age: null,
+      location: null,
+      occupation: null,
+      language: 'Hinglish', // default — user mixes Hindi+English
+    },
+    // Technical skills with proficiency
+    skills: {
+      // e.g. javascript: 'beginner', python: 'intermediate'
+    },
+    // Current goals
+    goals: [],
+    // What they're currently learning
+    currentlyLearning: [],
+    // Projects they've mentioned
+    projects: [],
+    // Interests and hobbies
+    interests: [],
+    // How they communicate
+    communicationStyle: {
+      prefersShortAnswers: false,
+      asksFollowups: false,
+      usesHinglish: true,
+      directness: 'medium', // direct/indirect
+      techLevel: 'beginner', // beginner/intermediate/advanced
+      preferredExplanationStyle: 'examples', // examples/theory/both
+    },
+    // Behavior patterns noticed
+    behaviorPatterns: {
+      typicalSessionLength: null,
+      mostActiveTopics: [],
+      commonQuestionTypes: [],
+      learningPace: 'medium', // slow/medium/fast
+      prefersStepByStep: true,
+    },
+    // Raw facts (legacy + new)
+    facts: [],
+    // Session history summary
+    sessionHistory: [],
+    messageCount: 0,
+    firstSeen: new Date().toISOString(),
+    lastSeen: new Date().toISOString(),
+  };
 }
 
 function saveMemory(memory) {
   try {
     const dir = path.dirname(MEMORY_FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    memory.lastSeen = new Date().toISOString();
     fs.writeFileSync(MEMORY_FILE, JSON.stringify(memory, null, 2));
   } catch(e) {}
+}
+
+// Deep analysis of user message to update profile
+async function analyzeAndUpdateProfile(message, reply, memory) {
+  try {
+    memory.messageCount = (memory.messageCount || 0) + 1;
+
+    const analysisPrompt = `Analyze this conversation exchange and extract structured information about the USER.
+Return ONLY valid JSON, nothing else.
+
+User message: "${message}"
+Assistant reply: "${reply.slice(0, 300)}"
+
+Current known profile: ${JSON.stringify({
+  name: memory.profile?.name,
+  skills: memory.skills,
+  goals: memory.goals?.slice(-3),
+  interests: memory.interests?.slice(-5),
+})}
+
+Extract and return JSON:
+{
+  "name": "user's name if mentioned, else null",
+  "age": "age if mentioned, else null", 
+  "location": "city/country if mentioned, else null",
+  "occupation": "job/student status if mentioned, else null",
+  "newSkills": {"skillName": "beginner/intermediate/advanced"},
+  "newGoals": ["goal if mentioned"],
+  "newInterests": ["topic/hobby if mentioned"],
+  "newProjects": ["project name if mentioned"],
+  "currentlyLearning": ["topic they want to learn"],
+  "communicationInsights": {
+    "usesHinglish": true/false,
+    "prefersShortAnswers": true/false,
+    "techLevel": "beginner/intermediate/advanced or null",
+    "preferredStyle": "examples/theory/both or null"
+  },
+  "behaviorInsights": {
+    "learningPace": "slow/medium/fast or null",
+    "prefersStepByStep": true/false/null
+  },
+  "importantFact": "one key fact worth remembering, or null"
+}
+
+Rules:
+- Only extract what is EXPLICITLY mentioned or clearly implied
+- Return null for anything not mentioned
+- Keep arrays short (max 2 items per message)`;
+
+    const data = await callGroq([
+      { role: 'system', content: 'You extract structured user profile data. Return only valid JSON.' },
+      { role: 'user', content: analysisPrompt }
+    ], 'llama-3.1-8b-instant');
+
+    const raw = data.choices[0].message.content;
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return memory;
+    
+    const insights = JSON.parse(jsonMatch[0]);
+
+    // Update profile
+    if (insights.name) memory.profile.name = insights.name;
+    if (insights.age) memory.profile.age = insights.age;
+    if (insights.location) memory.profile.location = insights.location;
+    if (insights.occupation) memory.profile.occupation = insights.occupation;
+
+    // Update skills
+    if (insights.newSkills) {
+      Object.assign(memory.skills, insights.newSkills);
+    }
+
+    // Update goals (keep last 10)
+    if (insights.newGoals?.length) {
+      memory.goals = [...new Set([...memory.goals, ...insights.newGoals])].slice(-10);
+    }
+
+    // Update interests (keep last 20)
+    if (insights.newInterests?.length) {
+      memory.interests = [...new Set([...memory.interests, ...insights.newInterests])].slice(-20);
+    }
+
+    // Update projects
+    if (insights.newProjects?.length) {
+      memory.projects = [...new Set([...memory.projects, ...insights.newProjects])].slice(-10);
+    }
+
+    // Update currently learning
+    if (insights.currentlyLearning?.length) {
+      memory.currentlyLearning = [...new Set([...memory.currentlyLearning, ...insights.currentlyLearning])].slice(-5);
+    }
+
+    // Update communication style
+    if (insights.communicationInsights) {
+      const c = insights.communicationInsights;
+      if (c.usesHinglish !== null) memory.communicationStyle.usesHinglish = c.usesHinglish;
+      if (c.prefersShortAnswers !== null) memory.communicationStyle.prefersShortAnswers = c.prefersShortAnswers;
+      if (c.techLevel) memory.communicationStyle.techLevel = c.techLevel;
+      if (c.preferredStyle) memory.communicationStyle.preferredExplanationStyle = c.preferredStyle;
+    }
+
+    // Update behavior
+    if (insights.behaviorInsights) {
+      const b = insights.behaviorInsights;
+      if (b.learningPace) memory.behaviorPatterns.learningPace = b.learningPace;
+      if (b.prefersStepByStep !== null) memory.behaviorPatterns.prefersStepByStep = b.prefersStepByStep;
+    }
+
+    // Add important fact
+    if (insights.importantFact) {
+      memory.facts = [...new Set([...memory.facts, insights.importantFact])].slice(-30);
+    }
+
+    saveMemory(memory);
+    return memory;
+  } catch(e) {
+    console.error('Profile analysis error:', e.message);
+    return memory;
+  }
+}
+
+// Build rich context string for system prompt
+function buildUserContext(memory) {
+  const parts = [];
+
+  // Identity
+  const p = memory.profile || {};
+  const identity = [p.name, p.age ? `${p.age} years old` : null, p.occupation, p.location]
+    .filter(Boolean).join(', ');
+  if (identity) parts.push(`USER IDENTITY: ${identity}`);
+
+  // Skills
+  const skills = Object.entries(memory.skills || {});
+  if (skills.length) {
+    parts.push(`TECHNICAL SKILLS: ${skills.map(([k,v]) => `${k}(${v})`).join(', ')}`);
+  }
+
+  // Currently learning
+  if (memory.currentlyLearning?.length) {
+    parts.push(`CURRENTLY LEARNING: ${memory.currentlyLearning.join(', ')}`);
+  }
+
+  // Goals
+  if (memory.goals?.length) {
+    parts.push(`GOALS: ${memory.goals.slice(-5).join(' | ')}`);
+  }
+
+  // Projects
+  if (memory.projects?.length) {
+    parts.push(`ACTIVE PROJECTS: ${memory.projects.join(', ')}`);
+  }
+
+  // Interests
+  if (memory.interests?.length) {
+    parts.push(`INTERESTS: ${memory.interests.slice(-8).join(', ')}`);
+  }
+
+  // Communication style — CRITICAL for adapting responses
+  const cs = memory.communicationStyle || {};
+  const styleNotes = [];
+  if (cs.usesHinglish) styleNotes.push('speaks Hinglish (Hindi+English mix) — you can respond in Hinglish too');
+  if (cs.prefersShortAnswers) styleNotes.push('prefers concise answers');
+  if (cs.techLevel) styleNotes.push(`tech level: ${cs.techLevel}`);
+  if (cs.preferredExplanationStyle) styleNotes.push(`learns best with: ${cs.preferredExplanationStyle}`);
+  if (styleNotes.length) parts.push(`COMMUNICATION STYLE: ${styleNotes.join(', ')}`);
+
+  // Behavior
+  const bp = memory.behaviorPatterns || {};
+  if (bp.prefersStepByStep) parts.push('BEHAVIOR: prefers step-by-step explanations');
+  if (bp.learningPace) parts.push(`LEARNING PACE: ${bp.learningPace}`);
+
+  // Important facts
+  if (memory.facts?.length) {
+    parts.push(`REMEMBERED FACTS:\n${memory.facts.slice(-10).map(f => `• ${f}`).join('\n')}`);
+  }
+
+  // Stats
+  parts.push(`INTERACTION COUNT: ${memory.messageCount || 0} messages total`);
+
+  return parts.length ? `\n\n## DEEP USER PROFILE (Use this to personalize every response)\n${parts.join('\n')}` : '';
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -323,18 +566,16 @@ app.post('/api/chat', async (req, res) => {
 
   try {
     const memory = loadMemory();
-    
-    // Build rich memory context
-    const memoryContext = memory.facts.length > 0
-      ? `\n\n## WHAT YOU KNOW ABOUT THIS USER\n${memory.facts.slice(-15).join('\n')}`
-      : '';
 
-    // Time context — JARVIS should know the time
+    // Build deep user context from profile database
+    const userContext = buildUserContext(memory);
+
+    // Time context
     const now = new Date();
-    const timeContext = `\n\n## CURRENT CONTEXT\nDate: ${now.toDateString()}\nTime: ${now.toLocaleTimeString()}\nUser's message count this session: ${history.length}`;
+    const timeContext = `\n\n## SESSION INFO\nDate: ${now.toDateString()} | Time: ${now.toLocaleTimeString()} | Messages this session: ${history.length}`;
 
-    const systemPrompt = (TONES[tone] || TONES.assistant) + memoryContext + timeContext;
-    
+    const systemPrompt = (TONES[tone] || TONES.assistant) + userContext + timeContext;
+
     const messages = [
       { role: 'system', content: systemPrompt },
       ...history.slice(-20),
@@ -343,6 +584,9 @@ app.post('/api/chat', async (req, res) => {
 
     const data = await callGroq(messages, model);
     const reply = data.choices[0].message.content;
+
+    // Async: analyze message + reply to update user profile (don't await — non-blocking)
+    analyzeAndUpdateProfile(message, reply, memory).catch(() => {});
 
     // Auto-extract memories (background task)
     setImmediate(async () => {
@@ -566,6 +810,38 @@ app.post('/api/run-code', async (req, res) => {
   }
 });
 
+
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// USER PROFILE API
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// Get full user profile
+app.get('/api/profile', (req, res) => {
+  const memory = loadMemory();
+  res.json({ success: true, profile: memory });
+});
+
+// Update profile manually
+app.post('/api/profile/update', (req, res) => {
+  const memory = loadMemory();
+  const { field, value } = req.body;
+  const allowed = ['profile', 'skills', 'goals', 'interests', 'projects'];
+  if (!allowed.includes(field)) return res.status(400).json({ error: 'Invalid field' });
+  memory[field] = { ...(memory[field] || {}), ...value };
+  saveMemory(memory);
+  res.json({ success: true });
+});
+
+// Clear profile / fresh start
+app.delete('/api/profile', (req, res) => {
+  try {
+    if (fs.existsSync(MEMORY_FILE)) fs.unlinkSync(MEMORY_FILE);
+    res.json({ success: true, message: 'Profile cleared, Sir.' });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // LEARNING MODE — Step by Step Course System

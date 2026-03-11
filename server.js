@@ -1183,46 +1183,33 @@ app.get('/api/learn/sessions', (req, res) => {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // SMART DESKTOP COMMAND PARSER
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function parseDesktopCommand(message) {
+async function parseDesktopCommand(message) {
   const msg = message.toLowerCase().trim();
 
-  // WhatsApp
-  const waMatch = msg.match(/(?:send|bhej|message|msg|text).*?whatsapp.*?(?:to\s+)?([+\d\s\w]+?)(?:\s*[:\-]\s*|\s+(?:pe\s+)?(?:bolo|likho|send|bhej|message)?\s*)(.*?)$/i)
-    || msg.match(/whatsapp.*?(?:to\s+)?([+\d\s\w]+?)[:\-]\s*(.*?)$/i);
-  if (waMatch || msg.includes('whatsapp')) {
-    const contact = waMatch?.[1]?.trim() || '';
-    const text = waMatch?.[2]?.trim() || message.replace(/whatsapp.*?(to\s+\S+)?/i,'').trim();
+  if (/whatsapp/i.test(msg)) {
+    const numMatch = message.match(/([+]?[0-9]{10,13})/);
+    const afterColon = message.match(/[:] *(.+)$/);
+    const contact = numMatch?.[1] || '';
+    const text = afterColon?.[1]?.trim() || '';
     return { action: 'whatsapp_send', params: { contact, message: text } };
   }
-
-  // Open app
-  const openMatch = msg.match(/(?:open|launch|start|kholo|chalu)\s+(.+)/i);
-  if (openMatch) return { action: 'open_app', params: { app: openMatch[1].trim() } };
-
-  // Screenshot
-  if (msg.match(/screenshot|screen\s*shot|capture\s*screen/)) 
-    return { action: 'screenshot', params: {} };
-
-  // Volume
-  const volMatch = msg.match(/volume\s*(?:set\s*)?(?:to\s*)?(\d+)/i);
-  if (volMatch) return { action: 'volume', params: { level: volMatch[1] } };
-
-  // System info
-  if (msg.match(/cpu|ram|memory|disk|system\s*info|pc\s*status/))
-    return { action: 'system_info', params: {} };
-
-  // Search files
-  const fileMatch = msg.match(/(?:find|search|dhundho)\s+(?:file\s+)?["']?(.+?)["']?(?:\s+(?:in|on)\s+(.+))?$/i);
-  if (fileMatch) return { action: 'search_files', params: { query: fileMatch[1], folder: fileMatch[2] || '~/Desktop' } };
-
-  // Run command
-  const cmdMatch = msg.match(/(?:run|execute|terminal)\s+["`]?(.+)["`]?/i);
-  if (cmdMatch) return { action: 'run_command', params: { command: cmdMatch[1] } };
-
-  // Create file
-  const createMatch = msg.match(/create.*?file.*?(?:with\s+(?:text\s+)?["']?(.+)["']?)?/i);
-  if (createMatch) return { action: 'create_file', params: { path: '~/Desktop/jarvis_note.txt', content: createMatch[1] || '' } };
-
+  const openM = msg.match(/^(?:open|launch|start|kholo|chalu) +(.+)$/);
+  if (openM) return { action: 'open_app', params: { app: openM[1].trim() } };
+  if (/screenshot|screen shot/i.test(msg)) return { action: 'screenshot', params: {} };
+  const volM = msg.match(/volume[^0-9]*([0-9]+)/);
+  if (volM) return { action: 'volume', params: { level: parseInt(volM[1]) } };
+  if (/volume.*(up|badhao)/i.test(msg)) return { action: 'volume', params: { level: 80 } };
+  if (/volume.*(down|kam|mute)/i.test(msg)) return { action: 'volume', params: { level: 10 } };
+  if (/cpu|ram|battery|disk|system.?info|pc.?status|laptop.?status/i.test(msg)) return { action: 'system_info', params: {} };
+  const findM = msg.match(/(?:find|search|dhundho) +(?:file +)?(.+)/);
+  if (findM) return { action: 'search_files', params: { query: findM[1].trim() } };
+  const createM = msg.match(/(?:create|bana|save) +(?:a +)?(?:file|note) +(?:with +)?(?:text +)?(.+)/);
+  if (createM) return { action: 'create_file', params: { path: '~/Desktop/jarvis_note.txt', content: createM[1] } };
+  if (/list +(?:files|desktop)/i.test(msg)) return { action: 'list_files', params: { folder: '~/Desktop' } };
+  if (/scroll +down/i.test(msg)) return { action: 'scroll', params: { direction: 'down', amount: 5 } };
+  if (/scroll +up/i.test(msg)) return { action: 'scroll', params: { direction: 'up', amount: 5 } };
+  const runM = msg.match(/(?:run|execute) +(.+)/);
+  if (runM) return { action: 'run_command', params: { command: runM[1] } };
   return null;
 }
 

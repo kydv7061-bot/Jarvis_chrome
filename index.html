@@ -592,6 +592,8 @@ body::before {
   border-left:1px solid var(--border);
   border-right:1px solid var(--border);
   overflow:hidden;
+  height:100%;
+  min-height:0;
 }
 
 .chat-header {
@@ -638,12 +640,15 @@ body::before {
 #messages {
   flex:1;
   overflow-y:auto;
+  overflow-x:hidden;
   padding:16px;
   display:flex;
   flex-direction:column;
-  gap:12px;
+  gap:0;
   scrollbar-width:thin;
   scrollbar-color:var(--border) transparent;
+  min-height:0;
+  height:100%;
 }
 
 #messages::-webkit-scrollbar { width:3px; }
@@ -1750,6 +1755,7 @@ async function sendMessage() {
   const startTime = Date.now();
   const typing = document.getElementById('typing');
   typing.style.display = 'block';
+  document.getElementById('messages').appendChild(typing);
   scrollBottom();
 
   try {
@@ -1939,27 +1945,44 @@ function createStreamingMessage() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function addMessage(sender, text, sources) {
   const messages = document.getElementById('messages');
-  const typing = document.getElementById('typing');
   const now = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   const name = sender === 'jarvis' ? 'J.A.R.V.I.S' : 'SIR';
 
-  const sourcesHTML = sources && sources.length ? `
-    <div class="sources-bar">
-      ${sources.map((s,i) => s.url ? `<a class="source-chip" href="${s.url}" target="_blank">[${i+1}] ${s.title.slice(0,30)}</a>` : `<span class="source-chip">[${i+1}] ${s.title.slice(0,30)}</span>`).join('')}
-    </div>
-  ` : '';
+  let sourcesHTML = '';
+  if (sources && sources.length) {
+    const chips = sources.map((s,i) => {
+      const title = (s.title||'Source').slice(0,28);
+      return s.url
+        ? `<a class="source-chip" href="${s.url}" target="_blank">[${i+1}] ${title}</a>`
+        : `<span class="source-chip">[${i+1}] ${title}</span>`;
+    }).join('');
+    sourcesHTML = `<div class="sources-bar">${chips}</div>`;
+  }
+
+  const isJarvis = sender === 'jarvis';
+  const avatarStyle = isJarvis
+    ? 'background:rgba(0,207,255,0.1);border:1px solid rgba(0,207,255,0.5);color:#00cfff;'
+    : 'background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.5);color:#ffd700;';
+  const nameColor = isJarvis ? '#00cfff' : '#ffd700';
+  const bodyStyle = isJarvis
+    ? 'background:rgba(0,207,255,0.05);border-left:2px solid rgba(0,207,255,0.5);color:#e0f4ff;'
+    : 'background:rgba(255,215,0,0.04);border-left:2px solid rgba(255,215,0,0.4);color:#b8e8ff;margin-left:16px;';
 
   const div = document.createElement('div');
-  div.className = 'message';
-  div.innerHTML = `
-    <div class="msg-header">
-      <div class="msg-avatar ${sender}">${sender === 'jarvis' ? 'J' : 'S'}</div>
-      <span class="msg-name ${sender}">${name}</span>
-      <span class="msg-time">${now}</span>
-    </div>
-    <div class="msg-body ${sender}">${formatText(text)}${sourcesHTML}</div>
-  `;
-  messages.insertBefore(div, typing);
+  div.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-bottom:12px;';
+  div.innerHTML =
+    '<div style="display:flex;align-items:center;gap:8px;">' +
+      '<div style="width:24px;height:24px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:Orbitron,sans-serif;font-size:10px;font-weight:700;flex-shrink:0;' + avatarStyle + '">' +
+        (isJarvis ? 'J' : 'S') +
+      '</div>' +
+      '<span style="font-family:Orbitron,sans-serif;font-size:9px;letter-spacing:3px;color:' + nameColor + ';">' + name + '</span>' +
+      '<span style="font-size:9px;color:#3a6070;letter-spacing:1px;margin-left:auto;">' + now + '</span>' +
+    '</div>' +
+    '<div style="padding:12px 14px;border-radius:2px;font-size:13px;line-height:1.7;font-family:Rajdhani,sans-serif;' + bodyStyle + '">' +
+      formatText(text) + sourcesHTML +
+    '</div>';
+
+  messages.appendChild(div);
   scrollBottom();
 }
 
@@ -1982,15 +2005,13 @@ function escHtml(t) {
 
 function scrollBottom() {
   const m = document.getElementById('messages');
-  m.scrollTop = m.scrollHeight;
+  setTimeout(() => { m.scrollTop = m.scrollHeight; }, 50);
 }
 
 function clearChat() {
   chatHistory = [];
   const m = document.getElementById('messages');
-  const t = document.getElementById('typing');
   m.innerHTML = '';
-  m.appendChild(t);
   addMessage('jarvis', 'Memory cleared, Sir. Fresh session initialized. All previous context has been wiped. How may I assist?');
   document.getElementById('ctxPct').textContent = '0%';
   document.getElementById('ctxBar').style.width = '0%';

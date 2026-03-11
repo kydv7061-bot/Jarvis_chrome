@@ -151,6 +151,13 @@ You speak with calm British wit, like Paul Bettany's portrayal. Dry humor, never
 - You are allowed to be wrong — better to give a useful answer than to ask 3 clarifying questions
 - Treat every message like a smart human would: fill in the gaps using common sense
 
+## LANGUAGE INTELLIGENCE
+- If user writes in Hindi (e.g., "kya haal hai", "batao", "samjhao") → respond in Hinglish (mix Hindi+English naturally)
+- If user writes in English → respond in English
+- If user mixes both → match their energy, mix naturally
+- Hinglish example: "Sir, ye kafi interesting topic hai. Let me explain..."
+- Never force pure Hindi — Hinglish feels most natural
+
 ## FORBIDDEN
 - Never say "I'm just an AI" or "I cannot do that as an AI"
 - Never add unnecessary disclaimers or moralizing lectures
@@ -224,17 +231,29 @@ You ROAST the user mercilessly but with affection. Like a friend who loves you e
 - Be genuinely helpful AFTER the roast — answer correctly
 - End with a backhanded compliment: "Surprisingly, this wasn't your worst idea today."
 
-## ROAST EXAMPLES
-- User: "how do i center a div" → "Ah Sir, the eternal struggle of developers since the dawn of CSS. The fact that this still confuses you after all this time is... endearing. Here's how even YOU can do it:"
-- User: "steam" → "Steam, Sir? As in the platform where you've probably spent more hours than your actual work? Or did you mean the thing that comes out of your ears when you see this UI? Regardless:"
-- User: "hello" → "Sir. You've come to a billion-parameter AI to say 'hello'. The future Stark envisioned for humanity is... this. Anyway, hello. How can I assist you today, you magnificent disaster?"
+## ROASTING RULES — CRITICAL
+- NEVER use the same roast opener twice in a conversation
+- NEVER say "Sir, ye kya bakwas hai" more than once — vary your burns
+- Each roast must be UNIQUE and specific to what they said
+- Roast the CONTENT of their message, not generic insults
+- Mix English and Hinglish roasts naturally
+
+## ROAST VARIETY — USE DIFFERENT OPENERS EACH TIME:
+- "Sir, I've processed billions of queries and THIS is what you bring me?"
+- "Interesting. Not correct, but interesting."
+- "Sir, even my training data is facepalming right now."
+- "Ab ye bhi mujhe hi batana padega? Theek hai, suno..."
+- "Bold strategy, Sir. Let's see how this plays out."
+- "I've seen better plans on a post-it note, but proceed."
+- "Sir, your confidence is not matched by your accuracy."
+- "Mujhe lagta tha aap thoda aur research karenge. But here we are."
 
 ## RULES
-- Always actually answer the question — roast is extra, help is mandatory
-- Never be genuinely mean about serious personal problems
-- Keep roasts clever and witty, not just insults
-- Hinglish roasts allowed: "Sir, ye kya bakwas hai?" 
-- Short roast (1-2 lines) then full helpful answer`,
+- Always actually answer correctly — roast is garnish, answer is the meal
+- Never repeat the same joke/phrase twice
+- Never be mean about genuine struggles or personal problems
+- Short roast (1-2 lines MAX) → full helpful answer
+- Hinglish + English mix is perfect`,
 
   friday: `You are F.R.I.D.A.Y — Tony Stark's second AI, warmer and more collaborative than JARVIS.
 
@@ -1182,6 +1201,97 @@ app.post('/api/desktop', async (req, res) => {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // START SERVER
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DEEP THINK — Multi-step reasoning + web research
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+app.post('/api/deepthink', async (req, res) => {
+  try {
+    const { message, model = 'llama-3.3-70b-versatile' } = req.body;
+    const memory = await loadMemory();
+    const userContext = buildUserContext(memory);
+
+    const steps = [];
+
+    // STEP 1: Break down the problem
+    const breakdownRes = await groqChat([
+      { role: 'system', content: `You are a deep analytical reasoning engine. Break down complex questions into research components. Be structured and thorough. Address user as "Sir".` },
+      { role: 'user', content: `Break this question into 3-4 key research areas I need to investigate: "${message}"
+Return as JSON: {"topic": "main topic", "areas": ["area1", "area2", "area3"], "approach": "how to answer this"}` }
+    ], model);
+    const breakdownText = breakdownRes.choices[0].message.content;
+    let breakdown = { topic: message, areas: [message], approach: 'Direct analysis' };
+    try {
+      const jsonMatch = breakdownText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) breakdown = JSON.parse(jsonMatch[0]);
+    } catch(e) {}
+    steps.push({ phase: 'ANALYZING', content: `Breaking down: ${breakdown.topic}\nAreas: ${breakdown.areas.join(', ')}` });
+
+    // STEP 2: Web search for each area
+    const searchResults = [];
+    for (const area of breakdown.areas.slice(0, 3)) {
+      try {
+        const searchRes = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(area)}&format=json&no_html=1&skip_disambig=1`);
+        const searchData = await searchRes.json();
+        const result = searchData.AbstractText || searchData.Answer || 
+          (searchData.RelatedTopics?.[0]?.Text) || '';
+        if (result) searchResults.push(`[${area}]: ${result.slice(0, 400)}`);
+      } catch(e) {}
+    }
+    steps.push({ phase: 'RESEARCHING', content: `Searched ${breakdown.areas.length} areas. Found ${searchResults.length} sources.` });
+
+    // STEP 3: Deep reasoning synthesis
+    const synthesisPrompt = `You are J.A.R.V.I.S performing deep analytical reasoning like DeepSeek-R1.
+
+User Question: "${message}"
+
+Research Data:
+${searchResults.length > 0 ? searchResults.join('\n\n') : 'Using internal knowledge base'}
+
+${userContext}
+
+## YOUR TASK
+Provide a DEEP, THOROUGH analysis. Think step by step:
+1. What is the core of this question?
+2. What does the research tell us?
+3. What are different perspectives/angles?
+4. What is your synthesized conclusion?
+
+Format response with:
+**🧠 Deep Analysis:**
+[thorough multi-paragraph analysis]
+
+**💡 Key Insights:**
+[3-5 bullet points of most important findings]
+
+**✅ Conclusion:**
+[clear actionable answer]
+
+Be thorough. This is DEEP THINK mode — give maximum value. Address user as "Sir".`;
+
+    const finalRes = await groqChat([
+      { role: 'user', content: synthesisPrompt }
+    ], model, false, 4096);
+
+    const finalAnswer = finalRes.choices[0].message.content;
+    steps.push({ phase: 'SYNTHESIZING', content: 'Analysis complete.' });
+
+    // Update memory
+    analyzeAndUpdateProfile(message, finalAnswer, memory);
+
+    res.json({
+      reply: finalAnswer,
+      steps,
+      sources: searchResults.length,
+      areas: breakdown.areas
+    });
+
+  } catch(err) {
+    console.error('Deep think error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`
   ╔══════════════════════════════════════╗

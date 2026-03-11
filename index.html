@@ -1473,6 +1473,7 @@ body::before {
         <button class="mode-tab" id="tab-upload" onclick="setInputMode('upload')">📎 FILE</button>
         <button class="mode-tab" id="tab-image" onclick="setInputMode('image')">👁 VISION</button>
         <button class="mode-tab" id="tab-code" onclick="setInputMode('code')">💻 CODE</button>
+        <button class="mode-tab" id="tab-learn" onclick="setInputMode('learn')">🎓 LEARN</button>
       </div>
 
       <!-- Upload zone -->
@@ -2285,5 +2286,467 @@ function updateFakeStats() {
 setInterval(updateFakeStats, 5000);
 
 </script>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- JARVIS LEARNING MODE PANEL                      -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="learnPanel" style="display:none;position:fixed;inset:0;z-index:200;background:var(--darkest);padding-top:52px;overflow:hidden;flex-direction:column;">
+
+  <!-- Learn Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--border);background:rgba(0,5,15,0.9);flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="font-family:Orbitron,sans-serif;font-size:10px;letter-spacing:4px;color:var(--blue);">◈ JARVIS LEARNING PROTOCOL</div>
+      <div id="learnTopicBadge" style="display:none;padding:3px 12px;border:1px solid var(--gold);border-radius:2px;font-size:9px;color:var(--gold);letter-spacing:2px;"></div>
+    </div>
+    <button onclick="closeLearnPanel()" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:5px 14px;font-size:9px;font-family:Share Tech Mono,monospace;letter-spacing:2px;cursor:pointer;border-radius:2px;">✕ CLOSE</button>
+  </div>
+
+  <div style="display:flex;flex:1;overflow:hidden;">
+
+    <!-- LEFT — Course outline / step list -->
+    <div id="learnSidebar" style="width:260px;border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0;scrollbar-width:none;">
+      <!-- Start screen -->
+      <div id="learnStartScreen" style="padding:24px 16px;">
+        <div style="font-family:Orbitron,sans-serif;font-size:11px;color:var(--blue);letter-spacing:3px;margin-bottom:6px;">START LEARNING</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:20px;letter-spacing:.5px;line-height:1.6;">Tell JARVIS what you want to learn — any topic, any skill.</div>
+
+        <input id="learnTopicInput" type="text" placeholder="e.g. Java, Python, DSA, React..." 
+          style="width:100%;background:rgba(0,207,255,0.04);border:1px solid var(--border);border-radius:3px;padding:10px 12px;color:var(--text-bright);font-family:Share Tech Mono,monospace;font-size:12px;outline:none;margin-bottom:10px;"
+          onkeydown="if(event.key==='Enter') startLearning()" />
+
+        <div style="display:flex;gap:6px;margin-bottom:16px;">
+          <button onclick="setLearnLevel('beginner')" id="lvl-beginner" class="lvl-btn" style="flex:1;padding:7px;background:rgba(0,207,255,0.1);border:1px solid var(--blue);border-radius:2px;color:var(--blue);font-size:9px;font-family:Share Tech Mono,monospace;letter-spacing:1px;cursor:pointer;">BEGINNER</button>
+          <button onclick="setLearnLevel('intermediate')" id="lvl-intermediate" class="lvl-btn" style="flex:1;padding:7px;background:transparent;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-size:9px;font-family:Share Tech Mono,monospace;letter-spacing:1px;cursor:pointer;">INTER</button>
+          <button onclick="setLearnLevel('advanced')" id="lvl-advanced" class="lvl-btn" style="flex:1;padding:7px;background:transparent;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-size:9px;font-family:Share Tech Mono,monospace;letter-spacing:1px;cursor:pointer;">ADVANCED</button>
+        </div>
+
+        <button onclick="startLearning()" style="width:100%;padding:11px;background:linear-gradient(135deg,rgba(0,207,255,0.15),rgba(0,207,255,0.05));border:1px solid var(--blue);border-radius:3px;color:var(--blue);font-family:Orbitron,sans-serif;font-size:10px;letter-spacing:3px;cursor:pointer;">
+          ◈ INITIALIZE COURSE
+        </button>
+
+        <!-- Previous sessions -->
+        <div id="prevSessions" style="margin-top:20px;"></div>
+      </div>
+
+      <!-- Step list (shown after course starts) -->
+      <div id="learnStepList" style="display:none;padding:10px 0;"></div>
+    </div>
+
+    <!-- CENTER — Step content -->
+    <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:thin;scrollbar-color:var(--border) transparent;">
+
+      <!-- Loading -->
+      <div id="learnLoading" style="display:none;flex:1;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+        <div style="font-family:Orbitron,sans-serif;font-size:14px;color:var(--blue);letter-spacing:4px;animation:bootGlow 1s infinite alternate;">INITIALIZING COURSE</div>
+        <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;" id="learnLoadingMsg">JARVIS is building your personalized curriculum...</div>
+        <div style="width:300px;height:2px;background:rgba(0,207,255,0.1);border-radius:2px;overflow:hidden;">
+          <div style="height:100%;background:linear-gradient(90deg,var(--blue-dim),var(--blue));box-shadow:0 0 8px var(--blue);animation:bootLoad 3s ease-in-out infinite;"></div>
+        </div>
+      </div>
+
+      <!-- Step content area -->
+      <div id="learnContent" style="flex:1;padding:28px 32px;max-width:800px;margin:0 auto;width:100%;">
+        <!-- Injected dynamically -->
+        <div style="text-align:center;padding:60px 20px;color:var(--text-dim);">
+          <div style="font-size:48px;margin-bottom:16px;">🎓</div>
+          <div style="font-family:Orbitron,sans-serif;font-size:12px;letter-spacing:4px;color:var(--blue);margin-bottom:8px;">LEARNING PROTOCOL READY</div>
+          <div style="font-size:11px;letter-spacing:1px;">Select a topic to begin, Sir.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT — Ask JARVIS / Progress -->
+    <div style="width:240px;border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;">
+      
+      <!-- Progress -->
+      <div style="padding:16px;border-bottom:1px solid var(--border);">
+        <div style="font-size:8px;letter-spacing:3px;color:var(--text-dim);margin-bottom:10px;">◈ PROGRESS</div>
+        <div style="font-family:Orbitron,sans-serif;font-size:28px;color:var(--blue);text-shadow:var(--glow);" id="learnPct">0%</div>
+        <div style="font-size:9px;color:var(--text-dim);margin-top:2px;" id="learnStepInfo">Step 0 of 0</div>
+        <div style="height:3px;background:rgba(0,207,255,0.08);border-radius:2px;margin-top:10px;overflow:hidden;">
+          <div id="learnProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--blue-dim),var(--blue));box-shadow:0 0 6px var(--blue);border-radius:2px;transition:width 0.5s ease;"></div>
+        </div>
+      </div>
+
+      <!-- Ask JARVIS -->
+      <div style="padding:14px;border-bottom:1px solid var(--border);">
+        <div style="font-size:8px;letter-spacing:3px;color:var(--text-dim);margin-bottom:8px;">◈ ASK JARVIS</div>
+        <textarea id="learnQuestion" placeholder="Confused about something? Ask JARVIS..." 
+          style="width:100%;background:rgba(0,207,255,0.03);border:1px solid var(--border);border-radius:2px;padding:8px;color:var(--text);font-family:Share Tech Mono,monospace;font-size:10px;resize:none;height:70px;outline:none;"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();askJarvisLearn();}"></textarea>
+        <button onclick="askJarvisLearn()" style="width:100%;margin-top:6px;padding:7px;background:transparent;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-size:9px;font-family:Share Tech Mono,monospace;cursor:pointer;letter-spacing:1px;transition:all 0.2s;" onmouseover="this.style.borderColor='#00cfff';this.style.color='#00cfff'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">ASK ▶</button>
+      </div>
+
+      <!-- JARVIS Answer -->
+      <div id="learnAnswer" style="padding:12px;flex:1;overflow-y:auto;font-size:10px;color:var(--text-dim);line-height:1.6;scrollbar-width:none;">
+        <span style="letter-spacing:1px;">JARVIS stands by for questions, Sir.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.step-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0,207,255,0.06);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.step-item:hover { background: rgba(0,207,255,0.05); }
+.step-item.active { background: rgba(0,207,255,0.08); border-left: 2px solid var(--blue); }
+.step-item.done { opacity: 0.6; }
+.step-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-family: Orbitron, sans-serif;
+  flex-shrink: 0; color: var(--text-dim);
+}
+.step-num.active { border-color: var(--blue); color: var(--blue); box-shadow: 0 0 8px rgba(0,207,255,0.3); }
+.step-num.done { border-color: #00ff88; color: #00ff88; background: rgba(0,255,136,0.1); }
+.step-title-sm { font-size: 10px; color: var(--text-dim); letter-spacing: .5px; line-height: 1.3; }
+.step-title-sm.active { color: var(--text); }
+
+.quiz-option {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: Rajdhani, sans-serif;
+  color: var(--text);
+  transition: all 0.2s;
+  margin-bottom: 6px;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+.quiz-option:hover { border-color: var(--blue); background: rgba(0,207,255,0.05); }
+.quiz-option.correct { border-color: #00ff88; background: rgba(0,255,136,0.08); color: #00ff88; }
+.quiz-option.wrong { border-color: var(--red); background: rgba(255,45,45,0.08); color: var(--red); }
+</style>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// LEARNING MODE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let learnSession = null;
+let currentLearnStep = 1;
+let learnLevel = 'beginner';
+let learnSessionId = null;
+
+function setLearnLevel(level) {
+  learnLevel = level;
+  document.querySelectorAll('.lvl-btn').forEach(b => {
+    b.style.background = 'transparent';
+    b.style.borderColor = 'var(--border)';
+    b.style.color = 'var(--text-dim)';
+  });
+  const btn = document.getElementById('lvl-' + level);
+  btn.style.background = 'rgba(0,207,255,0.1)';
+  btn.style.borderColor = 'var(--blue)';
+  btn.style.color = 'var(--blue)';
+}
+
+function openLearnPanel() {
+  document.getElementById('learnPanel').style.display = 'flex';
+  loadPrevSessions();
+}
+
+function closeLearnPanel() {
+  document.getElementById('learnPanel').style.display = 'none';
+  setInputMode('chat');
+}
+
+async function loadPrevSessions() {
+  try {
+    const res = await fetch(`${API_BASE}/api/learn/sessions`);
+    const data = await res.json();
+    const container = document.getElementById('prevSessions');
+    if (data.sessions && data.sessions.length > 0) {
+      container.innerHTML = '<div style="font-size:8px;letter-spacing:3px;color:var(--text-dim);margin-bottom:8px;">◈ RESUME COURSE</div>' +
+        data.sessions.map(s => `
+          <div onclick="resumeSession('${s.sessionId}')" style="padding:8px 10px;border:1px solid var(--border);border-radius:2px;cursor:pointer;margin-bottom:5px;transition:all 0.2s;" onmouseover="this.style.borderColor='#00cfff'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-size:10px;color:var(--text);letter-spacing:.5px;">${s.topic}</div>
+            <div style="font-size:9px;color:var(--text-dim);margin-top:2px;">${s.progress}% complete · Step ${s.currentStep}/10</div>
+          </div>
+        `).join('');
+    }
+  } catch(e) {}
+}
+
+async function startLearning() {
+  const topic = document.getElementById('learnTopicInput').value.trim();
+  if (!topic) { notify('Topic enter karo Sir!', 'error'); return; }
+
+  document.getElementById('learnStartScreen').style.display = 'none';
+  document.getElementById('learnLoading').style.display = 'flex';
+
+  const msgs = ['Building curriculum...', 'Structuring 10 lessons...', 'Preparing examples...', 'Adding quizzes...', 'Almost ready, Sir...'];
+  let mi = 0;
+  const msgInterval = setInterval(() => {
+    document.getElementById('learnLoadingMsg').textContent = msgs[mi % msgs.length];
+    mi++;
+  }, 1500);
+
+  try {
+    learnSessionId = `ls_${Date.now()}`;
+    const res = await fetch(`${API_BASE}/api/learn/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, level: learnLevel, sessionId: learnSessionId })
+    });
+    const data = await res.json();
+    clearInterval(msgInterval);
+
+    if (data.error) throw new Error(data.error);
+
+    learnSession = data;
+    document.getElementById('learnLoading').style.display = 'none';
+    document.getElementById('learnTopicBadge').style.display = 'block';
+    document.getElementById('learnTopicBadge').textContent = topic.toUpperCase();
+
+    renderStepList(data.curriculum.steps);
+    loadStep(1);
+
+  } catch(err) {
+    clearInterval(msgInterval);
+    document.getElementById('learnLoading').style.display = 'none';
+    document.getElementById('learnStartScreen').style.display = 'block';
+    notify('Error: ' + err.message, 'error');
+  }
+}
+
+async function resumeSession(sessionId) {
+  learnSessionId = sessionId;
+  document.getElementById('learnStartScreen').style.display = 'none';
+  document.getElementById('learnLoading').style.display = 'flex';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/learn/step`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, stepId: 1 })
+    });
+    const data = await res.json();
+    document.getElementById('learnLoading').style.display = 'none';
+
+    // Re-fetch sessions to get curriculum
+    const sessRes = await fetch(`${API_BASE}/api/learn/sessions`);
+    const sessData = await sessRes.json();
+    const sess = sessData.sessions.find(s => s.sessionId === sessionId);
+    if (sess) {
+      document.getElementById('learnTopicBadge').style.display = 'block';
+      document.getElementById('learnTopicBadge').textContent = sess.topic.toUpperCase();
+    }
+
+    loadStep(data.progress.current || 1);
+  } catch(err) {
+    document.getElementById('learnLoading').style.display = 'none';
+    notify('Could not resume session', 'error');
+  }
+}
+
+function renderStepList(steps) {
+  const list = document.getElementById('learnStepList');
+  list.style.display = 'block';
+  list.innerHTML = steps.map(s => `
+    <div class="step-item" id="stepItem_${s.id}" onclick="loadStep(${s.id})">
+      <div class="step-num" id="stepNum_${s.id}">${s.id}</div>
+      <div>
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:.5px;">${s.emoji} ${s.title}</div>
+        <div style="font-size:8px;color:var(--text-dim);opacity:.5;margin-top:1px;">${s.duration}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadStep(stepId) {
+  currentLearnStep = stepId;
+  document.getElementById('learnContent').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:10px;letter-spacing:2px;">LOADING STEP...</div>';
+
+  // Highlight active step
+  document.querySelectorAll('.step-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.step-num').forEach(el => el.classList.remove('active'));
+  const activeItem = document.getElementById('stepItem_' + stepId);
+  if (activeItem) { activeItem.classList.add('active'); activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  const activeNum = document.getElementById('stepNum_' + stepId);
+  if (activeNum) activeNum.classList.add('active');
+
+  try {
+    const res = await fetch(`${API_BASE}/api/learn/step`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: learnSessionId, stepId })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    renderStep(data.step, data.progress);
+    updateProgress(data.progress);
+
+    // Mark completed steps
+    data.progress.completed.forEach(id => {
+      const num = document.getElementById('stepNum_' + id);
+      if (num) { num.classList.remove('active'); num.classList.add('done'); num.textContent = '✓'; }
+    });
+
+  } catch(err) {
+    document.getElementById('learnContent').innerHTML = `<div style="color:var(--red);padding:20px;">${err.message}</div>`;
+  }
+}
+
+function renderStep(step, progress) {
+  const isLast = progress.current === progress.total;
+  document.getElementById('learnContent').innerHTML = `
+    <div style="animation:msgIn 0.3s ease;">
+      <!-- Step header -->
+      <div style="margin-bottom:24px;">
+        <div style="font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-bottom:6px;">STEP ${step.id} OF ${progress.total} · ${step.duration}</div>
+        <div style="font-family:Orbitron,sans-serif;font-size:18px;color:var(--blue);text-shadow:var(--glow);margin-bottom:6px;">${step.emoji} ${step.title}</div>
+        <div style="font-size:12px;color:var(--text-dim);letter-spacing:.5px;padding:8px 12px;background:rgba(0,207,255,0.04);border-left:2px solid rgba(0,207,255,0.3);border-radius:2px;">${step.objective}</div>
+      </div>
+
+      <!-- Theory -->
+      <div style="margin-bottom:24px;">
+        <div style="font-family:Orbitron,sans-serif;font-size:9px;color:var(--blue);letter-spacing:3px;margin-bottom:10px;">◈ THEORY</div>
+        <div style="font-size:13px;line-height:1.8;color:var(--text);font-family:Rajdhani,sans-serif;">${formatText(step.theory)}</div>
+      </div>
+
+      <!-- Key Points -->
+      <div style="margin-bottom:24px;">
+        <div style="font-family:Orbitron,sans-serif;font-size:9px;color:var(--blue);letter-spacing:3px;margin-bottom:10px;">◈ KEY POINTS</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${step.keyPoints.map(p => `<div style="display:flex;gap:10px;padding:8px 12px;background:rgba(0,207,255,0.03);border-radius:2px;font-size:12px;font-family:Rajdhani,sans-serif;color:var(--text);"><span style="color:var(--blue);flex-shrink:0;">▸</span>${p}</div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Example -->
+      <div style="margin-bottom:24px;">
+        <div style="font-family:Orbitron,sans-serif;font-size:9px;color:var(--gold);letter-spacing:3px;margin-bottom:10px;">◈ EXAMPLE</div>
+        <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(0,207,255,0.2);border-radius:3px;padding:16px;font-size:12px;font-family:Share Tech Mono,monospace;color:var(--cyan);overflow-x:auto;line-height:1.6;">${escHtml(step.example)}</div>
+      </div>
+
+      <!-- Exercise -->
+      <div style="margin-bottom:28px;padding:16px;background:rgba(255,215,0,0.03);border:1px solid rgba(255,215,0,0.2);border-radius:3px;">
+        <div style="font-family:Orbitron,sans-serif;font-size:9px;color:var(--gold);letter-spacing:3px;margin-bottom:8px;">◈ YOUR EXERCISE</div>
+        <div style="font-size:13px;color:var(--text);font-family:Rajdhani,sans-serif;line-height:1.6;">${step.exercise}</div>
+      </div>
+
+      <!-- Quiz -->
+      <div style="margin-bottom:28px;padding:20px;background:rgba(0,207,255,0.03);border:1px solid var(--border);border-radius:3px;" id="quizSection">
+        <div style="font-family:Orbitron,sans-serif;font-size:9px;color:var(--blue);letter-spacing:3px;margin-bottom:14px;">◈ KNOWLEDGE CHECK</div>
+        <div style="font-size:14px;color:var(--text-bright);font-family:Rajdhani,sans-serif;margin-bottom:14px;font-weight:600;">${step.quiz.question}</div>
+        <div id="quizOptions">
+          ${step.quiz.options.map(opt => `
+            <button class="quiz-option" onclick="submitQuiz('${opt.charAt(0)}', '${step.quiz.answer}', '${escHtml(step.quiz.explanation)}')">${opt}</button>
+          `).join('')}
+        </div>
+        <div id="quizFeedback" style="display:none;margin-top:12px;padding:10px 14px;border-radius:2px;font-size:12px;font-family:Rajdhani,sans-serif;"></div>
+      </div>
+
+      <!-- Navigation -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid var(--border);">
+        ${step.id > 1 ? `<button onclick="loadStep(${step.id - 1})" style="padding:10px 20px;background:transparent;border:1px solid var(--border);border-radius:2px;color:var(--text-dim);font-family:Share Tech Mono,monospace;font-size:10px;cursor:pointer;letter-spacing:2px;">◀ PREV</button>` : '<div></div>'}
+        ${!isLast ? `<button onclick="loadStep(${step.id + 1})" id="nextBtn" style="padding:10px 24px;background:linear-gradient(135deg,rgba(0,207,255,0.15),rgba(0,207,255,0.05));border:1px solid var(--blue);border-radius:2px;color:var(--blue);font-family:Orbitron,sans-serif;font-size:9px;cursor:pointer;letter-spacing:3px;">NEXT STEP ▶</button>`
+        : `<button onclick="completeCourse()" style="padding:10px 24px;background:linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,215,0,0.05));border:1px solid var(--gold);border-radius:2px;color:var(--gold);font-family:Orbitron,sans-serif;font-size:9px;cursor:pointer;letter-spacing:3px;">🏆 COMPLETE COURSE</button>`}
+      </div>
+    </div>
+  `;
+}
+
+function submitQuiz(selected, correct, explanation) {
+  const isCorrect = selected.toUpperCase() === correct.toUpperCase();
+  const options = document.querySelectorAll('.quiz-option');
+  options.forEach(btn => {
+    btn.disabled = true;
+    const letter = btn.textContent.trim().charAt(0).toUpperCase();
+    if (letter === correct.toUpperCase()) btn.classList.add('correct');
+    else if (letter === selected.toUpperCase() && !isCorrect) btn.classList.add('wrong');
+  });
+
+  const feedback = document.getElementById('quizFeedback');
+  feedback.style.display = 'block';
+  feedback.style.background = isCorrect ? 'rgba(0,255,136,0.08)' : 'rgba(255,45,45,0.08)';
+  feedback.style.border = isCorrect ? '1px solid rgba(0,255,136,0.3)' : '1px solid rgba(255,45,45,0.3)';
+  feedback.style.color = isCorrect ? '#00ff88' : '#ff6666';
+  feedback.innerHTML = (isCorrect ? '✅ Correct, Sir! ' : '❌ Incorrect. ') + explanation;
+
+  // Save progress
+  fetch(`${API_BASE}/api/learn/step`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId: learnSessionId, stepId: currentLearnStep, userAnswer: selected })
+  }).then(r => r.json()).then(data => {
+    updateProgress(data.progress);
+    if (data.progress.completed.includes(currentLearnStep)) {
+      const num = document.getElementById('stepNum_' + currentLearnStep);
+      if (num) { num.classList.add('done'); num.textContent = '✓'; }
+    }
+  }).catch(() => {});
+}
+
+function updateProgress(progress) {
+  document.getElementById('learnPct').textContent = progress.percentage + '%';
+  document.getElementById('learnStepInfo').textContent = `Step ${progress.current} of ${progress.total}`;
+  document.getElementById('learnProgressBar').style.width = progress.percentage + '%';
+}
+
+async function askJarvisLearn() {
+  const q = document.getElementById('learnQuestion').value.trim();
+  if (!q) return;
+  document.getElementById('learnQuestion').value = '';
+  document.getElementById('learnAnswer').innerHTML = '<div style="color:var(--blue);font-size:9px;letter-spacing:2px;">JARVIS THINKING...</div>';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/learn/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: learnSessionId, stepId: currentLearnStep, question: q })
+    });
+    const data = await res.json();
+    document.getElementById('learnAnswer').innerHTML =
+      '<div style="color:var(--blue);font-size:8px;letter-spacing:2px;margin-bottom:6px;">J.A.R.V.I.S</div>' +
+      '<div style="color:var(--text);font-size:11px;line-height:1.6;">' + formatText(data.reply) + '</div>';
+  } catch(err) {
+    document.getElementById('learnAnswer').innerHTML = '<div style="color:var(--red);">Error: ' + err.message + '</div>';
+  }
+}
+
+function completeCourse() {
+  document.getElementById('learnContent').innerHTML = `
+    <div style="text-align:center;padding:60px 20px;animation:msgIn 0.5s ease;">
+      <div style="font-size:64px;margin-bottom:20px;">🏆</div>
+      <div style="font-family:Orbitron,sans-serif;font-size:20px;color:var(--gold);text-shadow:var(--glow-gold);letter-spacing:6px;margin-bottom:10px;">COURSE COMPLETE</div>
+      <div style="font-size:13px;color:var(--text-dim);margin-bottom:24px;font-family:Rajdhani,sans-serif;">Congratulations, Sir. You have completed the course.</div>
+      <button onclick="document.getElementById('learnStartScreen').style.display='block';document.getElementById('learnStepList').style.display='none';document.getElementById('learnContent').innerHTML='';learnSession=null;" 
+        style="padding:12px 28px;background:rgba(255,215,0,0.1);border:1px solid var(--gold);border-radius:2px;color:var(--gold);font-family:Orbitron,sans-serif;font-size:10px;cursor:pointer;letter-spacing:3px;">
+        START NEW COURSE
+      </button>
+    </div>
+  `;
+  notify('Course completed! Well done, Sir! 🏆', 'gold');
+}
+
+// Override setInputMode to handle learn tab
+const _origSetInputMode = setInputMode;
+function setInputMode(mode) {
+  if (mode === 'learn') {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-learn').classList.add('active');
+    openLearnPanel();
+    return;
+  }
+  _origSetInputMode(mode);
+}
+
+// Auto-detect "I want to learn X" in chat
+const _origSendMessage = sendMessage;
+</script>
+
 </body>
 </html>

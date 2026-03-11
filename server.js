@@ -14,7 +14,29 @@ const PORT = process.env.PORT || 3000;
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve static files from public folder
+const publicPath = path.join(__dirname, 'public');
+app.use(express.static(publicPath));
+
+// Explicit root route — guaranteed to serve index.html
+app.get('/', (req, res) => {
+  const indexPath = path.join(publicPath, 'index.html');
+  if (require('fs').existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.send(`
+      <h1 style="font-family:monospace;color:#00cfff;background:#010810;padding:40px;min-height:100vh;margin:0">
+        J.A.R.V.I.S SERVER ONLINE<br><br>
+        <span style="color:#ff2d2d;font-size:14px">ERROR: public/index.html not found<br>
+        Make sure the public/ folder is in your GitHub repo.<br><br>
+        __dirname = ${__dirname}<br>
+        Expected: ${indexPath}
+        </span>
+      </h1>
+    `);
+  }
+});
 
 // Multer for file uploads
 const storage = multer.diskStorage({

@@ -2289,6 +2289,59 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeGodMode();
 });
 
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AUTOMATION HANDLER — Chrome Extension Bridge
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function handleAutomation(cmd) {
+  if (!cmd) return;
+  
+  if (cmd.type === 'whatsapp') {
+    // Tell extension to open WhatsApp and send message
+    const phone = cmd.phone?.replace(/[^0-9]/g, '') || '';
+    const message = cmd.message || '';
+    
+    if (phone) {
+      // Direct WhatsApp URL with auto-send via extension
+      window.postMessage({
+        type: 'JARVIS_EXECUTE',
+        text: `whatsapp ${phone} ${message}`
+      }, '*');
+      
+      // Also open directly
+      const url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+      
+      // Send via extension
+      if (window.__jarvisExtension) {
+        window.__jarvisExtension.sendWhatsApp(phone, message);
+      } else {
+        // Fallback: open tab, extension content.js will handle
+        window.postMessage({
+          type: 'JARVIS_WHATSAPP_SEND',
+          phone, message
+        }, '*');
+        window.open(url, '_blank');
+        
+        // After 5 seconds, notify
+        setTimeout(() => {
+          addMessage('jarvis', `📱 WhatsApp opened, Sir. If message not auto-sent — press Enter in WhatsApp Web.`);
+        }, 5000);
+      }
+    } else {
+      // No number — open WhatsApp Web
+      window.open('https://web.whatsapp.com', '_blank');
+      addMessage('jarvis', '📱 WhatsApp Web opened, Sir. Find the contact and I will type the message.');
+    }
+  }
+}
+
+// Listen for extension results
+window.addEventListener('message', (event) => {
+  if (event.data?.type === 'JARVIS_RESULT' && event.data.automated) {
+    addLog('ai', event.data.result || 'Automation done');
+  }
+});
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // BOOT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2529,6 +2582,11 @@ async function sendMessage() {
         if (data.error) throw new Error(data.error);
         reply = data.reply;
         tokenCount += data.tokens || 0;
+        
+        // Handle automation commands from server
+        if (data.automation) {
+          handleAutomation(data.automation);
+        }
       }
       chatHistory.push({ role: 'assistant', content: reply });
 

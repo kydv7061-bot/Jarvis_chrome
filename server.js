@@ -1180,6 +1180,52 @@ app.get('/api/learn/sessions', (req, res) => {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // DESKTOP AGENT PROXY — forwards to Python agent
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SMART DESKTOP COMMAND PARSER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function parseDesktopCommand(message) {
+  const msg = message.toLowerCase().trim();
+
+  // WhatsApp
+  const waMatch = msg.match(/(?:send|bhej|message|msg|text).*?whatsapp.*?(?:to\s+)?([+\d\s\w]+?)(?:\s*[:\-]\s*|\s+(?:pe\s+)?(?:bolo|likho|send|bhej|message)?\s*)(.*?)$/i)
+    || msg.match(/whatsapp.*?(?:to\s+)?([+\d\s\w]+?)[:\-]\s*(.*?)$/i);
+  if (waMatch || msg.includes('whatsapp')) {
+    const contact = waMatch?.[1]?.trim() || '';
+    const text = waMatch?.[2]?.trim() || message.replace(/whatsapp.*?(to\s+\S+)?/i,'').trim();
+    return { action: 'whatsapp_send', params: { contact, message: text } };
+  }
+
+  // Open app
+  const openMatch = msg.match(/(?:open|launch|start|kholo|chalu)\s+(.+)/i);
+  if (openMatch) return { action: 'open_app', params: { app: openMatch[1].trim() } };
+
+  // Screenshot
+  if (msg.match(/screenshot|screen\s*shot|capture\s*screen/)) 
+    return { action: 'screenshot', params: {} };
+
+  // Volume
+  const volMatch = msg.match(/volume\s*(?:set\s*)?(?:to\s*)?(\d+)/i);
+  if (volMatch) return { action: 'volume', params: { level: volMatch[1] } };
+
+  // System info
+  if (msg.match(/cpu|ram|memory|disk|system\s*info|pc\s*status/))
+    return { action: 'system_info', params: {} };
+
+  // Search files
+  const fileMatch = msg.match(/(?:find|search|dhundho)\s+(?:file\s+)?["']?(.+?)["']?(?:\s+(?:in|on)\s+(.+))?$/i);
+  if (fileMatch) return { action: 'search_files', params: { query: fileMatch[1], folder: fileMatch[2] || '~/Desktop' } };
+
+  // Run command
+  const cmdMatch = msg.match(/(?:run|execute|terminal)\s+["`]?(.+)["`]?/i);
+  if (cmdMatch) return { action: 'run_command', params: { command: cmdMatch[1] } };
+
+  // Create file
+  const createMatch = msg.match(/create.*?file.*?(?:with\s+(?:text\s+)?["']?(.+)["']?)?/i);
+  if (createMatch) return { action: 'create_file', params: { path: '~/Desktop/jarvis_note.txt', content: createMatch[1] || '' } };
+
+  return null;
+}
+
 app.post('/api/desktop', async (req, res) => {
   const { command } = req.body;
   try {

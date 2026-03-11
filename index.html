@@ -1381,17 +1381,17 @@ body::before {
     <!-- Models -->
     <div class="panel-title">◈ AI Model</div>
     <div class="model-list" id="modelList">
-      <button class="model-btn active" onclick="setModel('llama3-70b-8192', this)">
-        LLaMA 3 70B <span class="model-speed">FAST</span>
+      <button class="model-btn active" onclick="setModel('llama-3.3-70b-versatile', this)">
+        LLaMA 3.3 70B <span class="model-speed">BEST</span>
+      </button>
+      <button class="model-btn" onclick="setModel('llama-3.1-8b-instant', this)">
+        LLaMA 3.1 8B <span class="model-speed">ULTRA</span>
       </button>
       <button class="model-btn" onclick="setModel('llama3-8b-8192', this)">
-        LLaMA 3 8B <span class="model-speed">ULTRA</span>
+        LLaMA 3 8B <span class="model-speed">FAST</span>
       </button>
-      <button class="model-btn" onclick="setModel('llama-3.1-70b-versatile', this)">
-        LLaMA 3.1 70B <span class="model-speed">LATEST</span>
-      </button>
-      <button class="model-btn" onclick="setModel('mixtral-8x7b-32768', this)">
-        Mixtral 8x7B <span class="model-speed">32K</span>
+      <button class="model-btn" onclick="setModel('gemma2-9b-it', this)">
+        Gemma 2 9B <span class="model-speed">GOOGLE</span>
       </button>
     </div>
 
@@ -1588,7 +1588,7 @@ let tokenCount = 0;
 let totalRespTime = 0;
 let respCount = 0;
 let sessionStart = Date.now();
-let currentModel = 'llama3-70b-8192';
+let currentModel = 'llama-3.3-70b-versatile';
 let currentTone = 'assistant';
 let currentMode = 'chat'; // chat | search | upload | image | code
 let streamMode = false;

@@ -480,6 +480,27 @@ app.post('/api/run-code', async (req, res) => {
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DESKTOP AGENT PROXY — forwards to Python agent
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+app.post('/api/desktop', async (req, res) => {
+  const { command } = req.body;
+  try {
+    const fetch = (await import('node-fetch')).default;
+    // Try to reach local Python agent
+    const response = await fetch('http://localhost:9999', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command }),
+      signal: AbortSignal.timeout(3000)
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.json({ success: false, result: null, error: 'Desktop agent not running. Start jarvis_agent.py first.' });
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // START SERVER
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 app.listen(PORT, () => {

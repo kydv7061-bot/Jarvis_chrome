@@ -853,104 +853,178 @@ const learningSessions = {};
 // Generate full course curriculum
 app.post('/api/learn/start', async (req, res) => {
   const { topic, level = 'beginner', sessionId } = req.body;
+  console.log('[LEARN] Starting course:', topic, level);
 
   try {
-    const messages = [{
+    // Step 1: Generate titles for all 10 steps first (fast, small response)
+    const outlineMsg = [{
       role: 'system',
-      content: `You are J.A.R.V.I.S, an expert teacher. Create a complete step-by-step learning curriculum.
-You must respond ONLY with valid JSON, no extra text.`
+      content: 'You are a coding teacher. Respond ONLY with valid JSON array. No explanation, no markdown, no backticks.'
     }, {
       role: 'user',
-      content: `Create a complete learning curriculum for: "${topic}"
-Level: ${level}
-
-Respond with ONLY this JSON structure:
-{
-  "title": "Course title",
-  "description": "What student will achieve",
-  "totalSteps": 10,
-  "estimatedTime": "X hours",
-  "steps": [
-    {
-      "id": 1,
-      "title": "Step title",
-      "emoji": "📌",
-      "duration": "15 min",
-      "objective": "What you will learn",
-      "theory": "Detailed explanation of the concept (3-4 paragraphs)",
-      "example": "A practical code example or real-world example",
-      "keyPoints": ["point 1", "point 2", "point 3"],
-      "quiz": {
-        "question": "A question to test understanding",
-        "options": ["A) option", "B) option", "C) option", "D) option"],
-        "answer": "A",
-        "explanation": "Why this answer is correct"
-      },
-      "exercise": "A hands-on task or exercise for the student to do"
-    }
-  ]
-}
-
-Make exactly 10 steps. Each step must be detailed, practical and build on previous steps.`
+      content: `Give me 10 step titles to learn "${topic}" from ${level} level.
+Return ONLY this JSON array (no other text):
+[
+  {"id":1,"title":"Step title","emoji":"📌","duration":"15 min"},
+  {"id":2,"title":"Step title","emoji":"💡","duration":"20 min"}
+]
+Make all 10 steps.`
     }];
 
-    const data = await callGroq(messages, 'llama-3.3-70b-versatile');
-    const raw = data.choices[0].message.content;
+    const outlineData = await callGroq(outlineMsg, 'llama-3.3-70b-versatile');
+    const outlineRaw = outlineData.choices[0].message.content.trim();
+    console.log('[LEARN] Outline raw:', outlineRaw.slice(0, 200));
 
-    // Parse JSON safely
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Invalid curriculum format');
-    const curriculum = JSON.parse(jsonMatch[0]);
+    // Parse outline
+    const arrMatch = outlineRaw.match(/\[[\s\S]*\]/);
+    if (!arrMatch) throw new Error('Could not generate course outline. Try again.');
+    let steps = JSON.parse(arrMatch[0]);
+    if (!Array.isArray(steps) || steps.length === 0) throw new Error('Invalid steps format');
+
+    // Ensure exactly 10 steps with all required fields
+    steps = steps.slice(0, 10).map((s, i) => ({
+      id: s.id || (i + 1),
+      title: s.title || \`Step \${i+1}\`,
+      emoji: s.emoji || '📌',
+      duration: s.duration || '15 min',
+      objective: \`Learn \${s.title}\`,
+      theory: null,   // loaded on demand
+      example: null,
+      keyPoints: [],
+      quiz: null,
+      exercise: null
+    }));
+
+    // Pad to 10 if less
+    while (steps.length < 10) {
+      steps.push({
+        id: steps.length + 1,
+        title: \`Advanced \${topic} - Part \${steps.length + 1}\`,
+        emoji: '🚀',
+        duration: '20 min',
+        objective: 'Advanced concepts',
+        theory: null, example: null, keyPoints: [], quiz: null, exercise: null
+      });
+    }
+
+    const curriculum = {
+      title: \`\${topic} — \${level.charAt(0).toUpperCase()+level.slice(1)} Course\`,
+      description: \`Master \${topic} from \${level} to advanced level\`,
+      totalSteps: 10,
+      estimatedTime: '3-5 hours',
+      steps
+    };
 
     // Save session
-    const id = sessionId || `learn_${Date.now()}`;
+    const id = sessionId || \`learn_\${Date.now()}\`;
     learningSessions[id] = {
-      topic,
-      level,
-      curriculum,
+      topic, level, curriculum,
       currentStep: 1,
       completedSteps: [],
       startedAt: new Date().toISOString()
     };
 
-    // Also save to file for persistence
-    const memDir = require('path').join(__dirname, 'memory');
+    const memDir = path.join(__dirname, 'memory');
     if (!fs.existsSync(memDir)) fs.mkdirSync(memDir, { recursive: true });
     fs.writeFileSync(
-      require('path').join(memDir, `session_${id}.json`),
+      path.join(memDir, \`session_\${id}.json\`),
       JSON.stringify(learningSessions[id], null, 2)
     );
 
+    console.log('[LEARN] Course created:', id, 'with', steps.length, 'steps');
     res.json({ success: true, sessionId: id, curriculum, currentStep: 1 });
+
   } catch (err) {
-    console.error('Learn start error:', err);
+    console.error('[LEARN] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get specific step content
+// Get specific step content — generates on demand if not cached
 app.post('/api/learn/step', async (req, res) => {
   const { sessionId, stepId, userAnswer } = req.body;
+  console.log('[LEARN] Step request:', sessionId, stepId, userAnswer !== undefined ? 'with answer' : '');
 
   try {
     // Load session
     let session = learningSessions[sessionId];
     if (!session) {
-      const filePath = require('path').join(__dirname, 'memory', `session_${sessionId}.json`);
+      const filePath = path.join(__dirname, 'memory', `session_${sessionId}.json`);
       if (fs.existsSync(filePath)) {
         session = JSON.parse(fs.readFileSync(filePath, 'utf8'));
         learningSessions[sessionId] = session;
       } else {
-        return res.status(404).json({ error: 'Session not found' });
+        return res.status(404).json({ error: 'Session not found. Please start a new course.' });
       }
     }
 
-    const step = session.curriculum.steps.find(s => s.id === stepId);
-    if (!step) return res.status(404).json({ error: 'Step not found' });
+    const stepIndex = session.curriculum.steps.findIndex(s => s.id === stepId);
+    if (stepIndex === -1) return res.status(404).json({ error: 'Step not found' });
+    let step = session.curriculum.steps[stepIndex];
 
-    // If user submitted quiz answer, validate it
+    // Generate step content on demand if not yet generated
+    if (!step.theory) {
+      console.log('[LEARN] Generating content for step', stepId);
+      try {
+        const genMsg = [{
+          role: 'system',
+          content: 'You are a coding teacher. Respond ONLY with valid JSON. No markdown, no backticks, no extra text.'
+        }, {
+          role: 'user',
+          content: `Generate lesson content for step ${stepId} of a ${session.topic} course (${session.level} level).
+Step title: "${step.title}"
+
+Return ONLY this JSON (no other text):
+{
+  "objective": "One sentence: what student will learn",
+  "theory": "Clear explanation in 2-3 paragraphs. Use simple language.",
+  "example": "Practical code example or real-world example with explanation",
+  "keyPoints": ["key point 1", "key point 2", "key point 3"],
+  "quiz": {
+    "question": "Test question about this topic",
+    "options": ["A) first option", "B) second option", "C) third option", "D) fourth option"],
+    "answer": "A",
+    "explanation": "Why this answer is correct"
+  },
+  "exercise": "A simple hands-on task the student can do right now"
+}`
+        }];
+
+        const genData = await callGroq(genMsg, 'llama-3.3-70b-versatile');
+        const genRaw = genData.choices[0].message.content.trim();
+        console.log('[LEARN] Content raw preview:', genRaw.slice(0, 100));
+
+        const jsonMatch = genRaw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const generated = JSON.parse(jsonMatch[0]);
+          step = { ...step, ...generated };
+          session.curriculum.steps[stepIndex] = step;
+
+          // Cache to file
+          const filePath = path.join(__dirname, 'memory', `session_${sessionId}.json`);
+          fs.writeFileSync(filePath, JSON.stringify(session, null, 2));
+          learningSessions[sessionId] = session;
+        }
+      } catch (genErr) {
+        console.error('[LEARN] Content gen error:', genErr.message);
+        // Use fallback content so UI doesn't break
+        step.theory = `In this step, you will learn about ${step.title} in ${session.topic}.`;
+        step.example = `// ${step.title} example\nconsole.log("Learning ${step.title}");`;
+        step.keyPoints = [`Understand ${step.title}`, 'Practice with examples', 'Build on previous knowledge'];
+        step.objective = `Learn and understand ${step.title}`;
+        step.quiz = {
+          question: `Which best describes ${step.title}?`,
+          options: ['A) A core concept', 'B) An optional feature', 'C) A debugging tool', 'D) A library'],
+          answer: 'A',
+          explanation: `${step.title} is a core concept in ${session.topic}.`
+        };
+        step.exercise = `Try implementing what you learned about ${step.title} in a simple program.`;
+      }
+    }
+
+    // Handle quiz answer submission
     let quizFeedback = null;
-    if (userAnswer !== undefined) {
+    if (userAnswer !== undefined && step.quiz) {
       const isCorrect = userAnswer.toUpperCase() === step.quiz.answer.toUpperCase();
       quizFeedback = {
         correct: isCorrect,
@@ -959,14 +1033,12 @@ app.post('/api/learn/step', async (req, res) => {
         correctAnswer: step.quiz.answer
       };
 
-      // Mark step complete if answered
       if (!session.completedSteps.includes(stepId)) {
         session.completedSteps.push(stepId);
         session.currentStep = Math.min(stepId + 1, session.curriculum.totalSteps);
-
-        // Save updated session
-        const filePath = require('path').join(__dirname, 'memory', `session_${sessionId}.json`);
+        const filePath = path.join(__dirname, 'memory', `session_${sessionId}.json`);
         fs.writeFileSync(filePath, JSON.stringify(session, null, 2));
+        learningSessions[sessionId] = session;
       }
     }
 
@@ -982,7 +1054,9 @@ app.post('/api/learn/step', async (req, res) => {
       },
       isLastStep: stepId === session.curriculum.totalSteps
     });
+
   } catch (err) {
+    console.error('[LEARN] Step error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

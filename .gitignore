@@ -1,0 +1,9 @@
+node_modules/
+.env
+uploads/
+memory/
+*.log
+.DS_Store
+
+# DO NOT ignore public/ — it must be committed to GitHub!
+# public/ folder contains index.html which Railway needs

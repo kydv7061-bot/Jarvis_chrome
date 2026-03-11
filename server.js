@@ -15,27 +15,38 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-// Serve static files from public folder
-const publicPath = path.join(__dirname, 'public');
-app.use(express.static(publicPath));
+// Serve static files — check both root and public folder
+app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Explicit root route — guaranteed to serve index.html
+// Root route — find index.html wherever it is
 app.get('/', (req, res) => {
-  const indexPath = path.join(publicPath, 'index.html');
-  if (require('fs').existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.send(`
-      <h1 style="font-family:monospace;color:#00cfff;background:#010810;padding:40px;min-height:100vh;margin:0">
-        J.A.R.V.I.S SERVER ONLINE<br><br>
-        <span style="color:#ff2d2d;font-size:14px">ERROR: public/index.html not found<br>
-        Make sure the public/ folder is in your GitHub repo.<br><br>
-        __dirname = ${__dirname}<br>
-        Expected: ${indexPath}
-        </span>
-      </h1>
-    `);
+  // Try these locations in order
+  const locations = [
+    path.join(__dirname, 'public', 'index.html'),  // public/index.html
+    path.join(__dirname, 'index.html'),             // index.html (root)
+    path.join(__dirname, 'index (1).html'),         // index (1).html (GitHub upload name)
+  ];
+
+  for (const loc of locations) {
+    if (fs.existsSync(loc)) {
+      return res.sendFile(loc);
+    }
   }
+
+  // Nothing found — show helpful debug
+  res.send(`
+    <h1 style="font-family:monospace;color:#00cfff;background:#010810;padding:40px;min-height:100vh;margin:0">
+      J.A.R.V.I.S SERVER ONLINE<br><br>
+      <span style="color:#ff2d2d;font-size:14px">
+        ERROR: index.html not found anywhere!<br><br>
+        Searched in:<br>
+        ${locations.map(l => '• ' + l).join('<br>')}<br><br>
+        Files in /app:<br>
+        ${fs.readdirSync(__dirname).join('<br>')}
+      </span>
+    </h1>
+  `);
 });
 
 // Multer for file uploads

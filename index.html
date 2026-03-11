@@ -2542,7 +2542,10 @@ async function startLearning() {
     clearInterval(msgInterval);
     document.getElementById('learnLoading').style.display = 'none';
     document.getElementById('learnStartScreen').style.display = 'block';
-    notify('Error: ' + err.message, 'error');
+    // Show error in UI clearly
+    const errMsg = err.message || 'Server error. Make sure Railway is deployed with new server.js';
+    notify('⚠️ ' + errMsg, 'error');
+    addLog('error', 'Learn error: ' + errMsg);
   }
 }
 
@@ -2592,7 +2595,14 @@ function renderStepList(steps) {
 
 async function loadStep(stepId) {
   currentLearnStep = stepId;
-  document.getElementById('learnContent').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:10px;letter-spacing:2px;">LOADING STEP...</div>';
+  document.getElementById('learnContent').innerHTML = `
+    <div style="text-align:center;padding:60px 20px;">
+      <div style="font-family:Orbitron,sans-serif;font-size:11px;color:var(--blue);letter-spacing:4px;animation:bootGlow 1s infinite alternate;">LOADING STEP ${stepId}...</div>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:8px;letter-spacing:1px;">JARVIS is generating lesson content...</div>
+      <div style="width:200px;height:2px;background:rgba(0,207,255,0.1);border-radius:2px;overflow:hidden;margin:16px auto 0;">
+        <div style="height:100%;background:var(--blue);box-shadow:0 0 8px var(--blue);animation:bootLoad 1.5s ease-in-out infinite;"></div>
+      </div>
+    </div>`;
 
   // Highlight active step
   document.querySelectorAll('.step-item').forEach(el => el.classList.remove('active'));
@@ -2621,7 +2631,14 @@ async function loadStep(stepId) {
     });
 
   } catch(err) {
-    document.getElementById('learnContent').innerHTML = `<div style="color:var(--red);padding:20px;">${err.message}</div>`;
+    document.getElementById('learnContent').innerHTML = `
+      <div style="padding:32px;text-align:center;">
+        <div style="font-size:32px;margin-bottom:12px;">⚠️</div>
+        <div style="color:var(--red);font-size:12px;margin-bottom:16px;">${err.message}</div>
+        <button onclick="loadStep(${stepId})" style="padding:8px 20px;background:transparent;border:1px solid var(--blue);border-radius:2px;color:var(--blue);font-size:10px;font-family:Share Tech Mono,monospace;cursor:pointer;letter-spacing:2px;">
+          ↻ RETRY
+        </button>
+      </div>`;
   }
 }
 

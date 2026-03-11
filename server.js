@@ -499,7 +499,63 @@ if (process.env.TELEGRAM_BOT_TOKEN) {
 } else {
   console.log('ℹ️  Telegram Bot: TELEGRAM_BOT_TOKEN not set — skipping');
 }
+// ── TELEGRAM BOT (Webhook) ──
+const TBOT = process.env.TELEGRAM_BOT_TOKEN;
+const JARVIS_BASE = process.env.RAILWAY_STATIC_URL 
+  ? `https://${process.env.RAILWAY_STATIC_URL}` 
+  : process.env.JARVIS_URL;
 
+// Set webhook automatically on start
+if (TBOT) {
+  setTimeout(async () => {
+    const fetch = (await import('node-fetch')).default;
+    const webhookUrl = `${JARVIS_BASE}/telegram-webhook`;
+    await fetch(`https://api.telegram.org/bot${TBOT}/setWebhook?url=${webhookUrl}`);
+    console.log('✅ Telegram webhook set:', webhookUrl);
+  }, 3000);
+}
+
+// Receive messages from Telegram
+app.post('/telegram-webhook', async (req, res) => {
+  res.sendStatus(200); // Always reply fast
+  const msg = req.body?.message;
+  if (!msg?.text) return;
+
+  const chatId = msg.chat.id;
+  const text = msg.text;
+
+  const send = async (txt) => {
+    const fetch = (await import('node-fetch')).default;
+    await fetch(`https://api.telegram.org/bot${TBOT}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: txt.slice(0,4000), parse_mode: 'Markdown' })
+    });
+  };
+
+  const [cmd, ...args] = text.split(' ');
+  const query = args.join(' ');
+
+  if (cmd === '/start' || cmd === '/help') {
+    return send(`🤖 *J.A.R.V.I.S Online*\n\n/ask <question>\n/code <problem>\n/news\n/status\n\nYa seedha type karo!`);
+  }
+  if (cmd === '/status') {
+    return send(`✅ JARVIS Online!\n⚡ Railway Deployed\n🕐 ${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} IST`);
+  }
+
+  // All messages → JARVIS
+  await send('⏳ Processing...');
+  const mode = cmd === '/code' ? 'coder' : 'assistant';
+  const userMsg = (cmd.startsWith('/') ? query : text) || text;
+
+  const result = await fetch(`http://localhost:${process.env.PORT || 3000}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: userMsg, tone: mode, model: 'llama-3.3-70b-versatile' })
+  }).then(r => r.json()).catch(() => ({ reply: 'Error connecting to JARVIS' }));
+
+  await send(`🤖 ${result.reply || 'No response'}`);
+});
 // ─── START SERVER ─────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`

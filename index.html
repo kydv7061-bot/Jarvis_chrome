@@ -2254,7 +2254,7 @@ async function godSend() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message,
-        history: chatHistory.slice(-8),
+        history: chatHistory.slice(-20),
         tone: currentTone,
         model: currentModel
       })
@@ -2343,6 +2343,207 @@ window.addEventListener('message', (event) => {
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PERSISTENT CHAT MEMORY — Auto-save everything
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const DB_NAME = 'JarvisDB';
+const DB_VER  = 1;
+let jarvisDB  = null;
+
+// Open IndexedDB
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      // Chat sessions store
+      if (!db.objectStoreNames.contains('sessions')) {
+        const s = db.createObjectStore('sessions', { keyPath: 'id', autoIncrement: true });
+        s.createIndex('date', 'date');
+      }
+      // Messages store
+      if (!db.objectStoreNames.contains('messages')) {
+        const m = db.createObjectStore('messages', { keyPath: 'id', autoIncrement: true });
+        m.createIndex('sessionId', 'sessionId');
+        m.createIndex('date', 'date');
+      }
+      // Facts/memory store
+      if (!db.objectStoreNames.contains('facts')) {
+        db.createObjectStore('facts', { keyPath: 'key' });
+      }
+    };
+    req.onsuccess = (e) => { jarvisDB = e.target.result; resolve(jarvisDB); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+let currentSessionId = null;
+
+async function startNewSession() {
+  if (!jarvisDB) return;
+  const tx = jarvisDB.transaction('sessions', 'readwrite');
+  const store = tx.objectStore('sessions');
+  const sessionData = {
+    date: new Date().toISOString(),
+    title: 'Session ' + new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }),
+    messageCount: 0
+  };
+  const req = store.add(sessionData);
+  req.onsuccess = (e) => { currentSessionId = e.target.result; };
+}
+
+async function saveMessageToDB(role, content) {
+  if (!jarvisDB || !currentSessionId) return;
+  const tx = jarvisDB.transaction(['messages','sessions'], 'readwrite');
+  tx.objectStore('messages').add({
+    sessionId: currentSessionId,
+    role, content,
+    date: new Date().toISOString()
+  });
+  // Update session message count + title from first user message
+  const sStore = tx.objectStore('sessions');
+  const sReq = sStore.get(currentSessionId);
+  sReq.onsuccess = (e) => {
+    const session = e.target.result;
+    if (session) {
+      session.messageCount = (session.messageCount || 0) + 1;
+      if (session.messageCount === 1 && role === 'user') {
+        session.title = content.slice(0, 40) + (content.length > 40 ? '...' : '');
+      }
+      sStore.put(session);
+    }
+  };
+}
+
+async function loadAllSessions() {
+  if (!jarvisDB) return [];
+  return new Promise((resolve) => {
+    const tx = jarvisDB.transaction('sessions', 'readonly');
+    const req = tx.objectStore('sessions').index('date').getAll();
+    req.onsuccess = () => resolve((req.result || []).reverse());
+    req.onerror = () => resolve([]);
+  });
+}
+
+async function loadSessionMessages(sessionId) {
+  if (!jarvisDB) return [];
+  return new Promise((resolve) => {
+    const tx = jarvisDB.transaction('messages', 'readonly');
+    const idx = tx.objectStore('messages').index('sessionId');
+    const req = idx.getAll(IDBKeyRange.only(sessionId));
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => resolve([]);
+  });
+}
+
+async function deleteSession(sessionId) {
+  if (!jarvisDB) return;
+  const tx = jarvisDB.transaction(['sessions','messages'], 'readwrite');
+  tx.objectStore('sessions').delete(sessionId);
+  const idx = tx.objectStore('messages').index('sessionId');
+  const req = idx.getAll(IDBKeyRange.only(sessionId));
+  req.onsuccess = () => {
+    const msgs = req.result || [];
+    const tx2 = jarvisDB.transaction('messages', 'readwrite');
+    msgs.forEach(m => tx2.objectStore('messages').delete(m.id));
+  };
+}
+
+// ── HISTORY PANEL UI ──────────────────────────────
+async function showHistoryPanel() {
+  const sessions = await loadAllSessions();
+  let panelEl = document.getElementById('historyPanel');
+  if (!panelEl) {
+    panelEl = document.createElement('div');
+    panelEl.id = 'historyPanel';
+    panelEl.style.cssText = `
+      position:fixed; left:0; top:0; width:300px; height:100vh;
+      background:rgba(0,5,15,0.98); border-right:1px solid rgba(0,207,255,0.15);
+      z-index:500; overflow-y:auto; padding:16px; box-sizing:border-box;
+      transform:translateX(-100%); transition:transform 0.3s ease;
+      font-family:'Share Tech Mono',monospace;
+    `;
+    document.body.appendChild(panelEl);
+    setTimeout(() => panelEl.style.transform = 'translateX(0)', 10);
+  } else {
+    panelEl.style.transform = 'translateX(0)';
+  }
+
+  panelEl.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-family:Orbitron,sans-serif;font-size:9px;letter-spacing:4px;color:#00cfff;">◈ CHAT HISTORY</div>
+      <button onclick="closeHistoryPanel()" style="background:none;border:none;color:#005577;font-size:14px;cursor:pointer;">✕</button>
+    </div>
+    <button onclick="newChatSession()" style="width:100%;padding:8px;background:rgba(0,207,255,0.08);border:1px solid rgba(0,207,255,0.2);color:#00cfff;font-family:Orbitron,sans-serif;font-size:8px;letter-spacing:3px;cursor:pointer;margin-bottom:12px;">+ NEW CHAT</button>
+    <div id="sessionList">
+    ${sessions.length === 0 ? '<div style="color:#005577;font-size:10px;text-align:center;margin-top:20px;">No saved chats yet</div>' :
+      sessions.map(s => `
+        <div onclick="loadSession(${s.id})" style="padding:10px;border:1px solid rgba(0,207,255,0.1);margin-bottom:6px;cursor:pointer;transition:all 0.2s;border-left:2px solid ${s.id===currentSessionId?'#00cfff':'transparent'};"
+          onmouseover="this.style.borderColor='rgba(0,207,255,0.3)'"
+          onmouseout="this.style.borderColor='rgba(0,207,255,0.1)'">
+          <div style="color:#00cfff;font-size:10px;margin-bottom:3px;">${s.title || 'Untitled'}</div>
+          <div style="color:#005577;font-size:9px;">${new Date(s.date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})} · ${s.messageCount||0} msgs</div>
+          <button onclick="event.stopPropagation();deleteSessionUI(${s.id})" style="background:none;border:none;color:#333;font-size:9px;cursor:pointer;float:right;margin-top:-16px;">🗑</button>
+        </div>
+      `).join('')
+    }
+    </div>
+  `;
+}
+
+function closeHistoryPanel() {
+  const p = document.getElementById('historyPanel');
+  if (p) { p.style.transform = 'translateX(-100%)'; }
+}
+
+async function loadSession(sessionId) {
+  const messages = await loadSessionMessages(sessionId);
+  if (!messages.length) return;
+  
+  closeHistoryPanel();
+  
+  // Clear current chat
+  const messagesEl = document.getElementById('messages');
+  messagesEl.innerHTML = '';
+  chatHistory = [];
+  currentSessionId = sessionId;
+  
+  // Reload all messages from session
+  messages.forEach(m => {
+    addMessage(m.role === 'user' ? 'user' : 'jarvis', m.content, null, false); // false = don't save again
+    if (m.role !== 'system') {
+      chatHistory.push({ role: m.role, content: m.content });
+    }
+  });
+  
+  notify('Session loaded, Sir', 'success');
+}
+
+async function newChatSession() {
+  closeHistoryPanel();
+  document.getElementById('messages').innerHTML = '';
+  chatHistory = [];
+  await startNewSession();
+  addMessage('jarvis', 'New session started, Sir. How may I assist?');
+  notify('New chat started', 'success');
+}
+
+async function deleteSessionUI(sessionId) {
+  await deleteSession(sessionId);
+  showHistoryPanel(); // refresh
+}
+
+// ── INIT DB ON LOAD ────────────────────────────────
+openDB().then(async () => {
+  await startNewSession();
+  addLog('sys', 'Chat memory initialized');
+}).catch(e => {
+  addLog('ai', 'Memory DB error: ' + e.message);
+});
+
+
 // BOOT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const bootMsgs = [
@@ -2502,15 +2703,22 @@ async function sendMessage() {
   const text = input.value.trim();
   if (!text && !pendingFile) return;
 
-  // ── WHATSAPP — ALL formats → extension directly, NEVER server ──
-  // Works with: "whatsapp Rahul: hello" / "whatsapp Mom hello" / "whatsapp +91xxx: hi"
-  if (/^(?:send\s+)?whatsapp\s+/i.test(text)) {
+  // ── WHATSAPP — intercept BEFORE server, trigger extension directly ──
+  const waMatch = text.match(/^whatsapp\s+([+\d]{7,15})\s+(.+)$/i) ||
+                  text.match(/^whatsapp\s+([+\d]{7,15})[:\-]\s*(.+)$/i);
+  if (waMatch) {
+    const phone = waMatch[1].replace(/[^0-9]/g, '');
+    const msg   = waMatch[2].trim();
     input.value = '';
     addMessage('user', text);
-    addMessage('jarvis', '📱 **WhatsApp pe bhej raha hoon, Sir...**\n\nContact dhundh raha hoon aur message type kar raha hoon.');
-    window.postMessage({ type: 'JARVIS_EXECUTE', text: text.trim() }, '*');
-    addLog('sys', 'WhatsApp → extension');
-    return;  // ← server ko KABHI mat bhejo
+    addMessage('jarvis', '📱 **WhatsApp automation starting, Sir...**\n\nOpening WhatsApp Web → number: +' + phone + ' → message: "' + msg + '"');
+    // Fire extension
+    window.postMessage({ type: 'JARVIS_EXECUTE', text: 'whatsapp ' + phone + ' ' + msg }, '*');
+    // Open WhatsApp Web with pre-filled number+message
+    setTimeout(() => {
+      window.open('https://web.whatsapp.com/send?phone=' + phone + '&text=' + encodeURIComponent(msg), '_blank');
+    }, 200);
+    return;
   }
 
   input.value = '';
@@ -2518,13 +2726,16 @@ async function sendMessage() {
   messageCount++;
   document.getElementById('msgCount').textContent = messageCount;
   document.getElementById('totalMsgs').textContent = messageCount;
+
   const startTime = Date.now();
   const typing = document.getElementById('typing');
   typing.style.display = 'block';
   document.getElementById('messages').appendChild(typing);
   scrollBottom();
+
   try {
     let reply, sources;
+
     if (currentMode === 'search') {
       // WEB SEARCH MODE
       addMessage('user', `🌐 **SEARCH:** ${text}`);
@@ -2584,7 +2795,7 @@ async function sendMessage() {
         const res = await fetch(`${API_BASE}/api/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: `Execute or analyze this code:\n${text}`, history: chatHistory.slice(-16), tone: 'coder', model: currentModel })
+          body: JSON.stringify({ message: `Execute or analyze this code:\n${text}`, history: chatHistory.slice(-20), tone: 'coder', model: currentModel })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -2642,7 +2853,7 @@ async function sendMessage() {
         const res = await fetch(`${API_BASE}/api/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, history: chatHistory.slice(-1), tone: currentTone, model: currentModel })
+          body: JSON.stringify({ message: text, history: chatHistory.slice(-20), tone: currentTone, model: currentModel })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
@@ -4281,6 +4492,14 @@ int main() {
   </div>
 </div>
 
+
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('historyPanel');
+  if (panel && panel.style.transform === 'translateX(0px)' && 
+      !panel.contains(e.target) && !e.target.closest('[onclick*="showHistoryPanel"]')) {
+    closeHistoryPanel();
+  }
+});
 </body>
 </html>`,
 
@@ -4598,14 +4817,7 @@ setInputMode = function(mode) {
   _origSetInputMode2(mode);
 };
 </script>
-// WhatsApp command? Extension ko bhejo, server ko nahi
-const waCheck = userInput.value.trim();
-if (/^whatsapp\s+[a-zA-Z]/i.test(waCheck)) {
-  window.postMessage({ type: 'JARVIS_EXECUTE', text: waCheck }, '*');
-  addMessage('jarvis', '⏳ Sending WhatsApp message...');
-  userInput.value = '';
-  return;
-}
+
 
 <!-- ═══════════ GOD MODE OVERLAY ═══════════ -->
 <div id="godModeOverlay">

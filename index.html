@@ -2680,24 +2680,70 @@ function toggleStream() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // SEND MESSAGE — MAIN
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// ━━━ AUTOMATION COMMAND DETECTOR ━━━
+function detectAutomationCommand(text) {
+  const t = text.trim();
+  const tl = t.toLowerCase();
+
+  // WHATSAPP
+  if (/^whatsapp\s+/i.test(t)) {
+    const m = t.match(/^whatsapp\s+([^:]+)[:\-]?\s*(.*)$/i);
+    const to = m ? m[1].trim() : '';
+    const msg = m ? m[2].trim() : '';
+    return { type: 'whatsapp', display: '📱 WhatsApp bhej raha hoon, Sir...\n\n**To:** ' + to + (msg ? '\n**Message:** "' + msg + '"' : '') };
+  }
+  // OPEN SITE
+  if (/^(open|launch|kholo|start|go to)\s+\w/i.test(t)) {
+    const site = t.replace(/^(open|launch|kholo|start|go to)\s+/i,'');
+    return { type: 'open', display: '🌐 Opening ' + site + ', Sir...' };
+  }
+  // PLAY
+  if (/^(play|chalao|bajao)\s+/i.test(t)) {
+    const q = t.replace(/^(play|chalao|bajao)\s+/i,'');
+    return { type: 'play', display: '🎵 Playing ' + q + ' on YouTube, Sir...' };
+  }
+  // YOUTUBE SEARCH
+  if (/youtube.*search|search.*youtube|youtube\s+pe/i.test(t)) {
+    return { type: 'youtube', display: '▶ Searching YouTube, Sir...' };
+  }
+  // GOOGLE SEARCH
+  if (/google.*search|search.*google|google\s+karo/i.test(t)) {
+    return { type: 'google', display: '🔍 Googling, Sir...' };
+  }
+  // SCREENSHOT
+  if (/^(screenshot|take screenshot|screen capture)$/i.test(t)) {
+    return { type: 'screenshot', display: '📸 Taking screenshot, Sir...' };
+  }
+  // SCROLL
+  if (/^scroll\s+(down|up|neeche|upar)/i.test(t)) {
+    return { type: 'scroll', display: '↕ Scrolling, Sir...' };
+  }
+  // CLOSE/NEW TAB
+  if (/^(close tab|new tab|tab band|naya tab|reload|refresh)$/i.test(t)) {
+    return { type: 'tab', display: '🗂 Tab command, Sir...' };
+  }
+
+  return null; // not an automation command → goes to AI
+}
+
 async function sendMessage() {
   const input = document.getElementById('userInput');
   const text = input.value.trim();
   if (!text && !pendingFile) return;
 
-  // ── WHATSAPP — ALL formats → extension directly, NEVER server ──
-  if (/^whatsapp\s+/i.test(text)) {
+  // ━━━ FULL AUTOMATION INTERCEPT — extension handles ALL of these ━━━
+  const autoCmd = detectAutomationCommand(text);
+  if (autoCmd) {
     input.value = '';
     addMessage('user', text);
-    // Extract name or number for display
-    const waDisp = text.match(/^whatsapp\s+([^:]+)[:\-]?\s*(.*)$/i);
-    const target = waDisp ? waDisp[1].trim() : '';
-    const waMsg  = waDisp ? waDisp[2].trim() : '';
-    addMessage('jarvis', '📱 WhatsApp pe bhej raha hoon, Sir...\n\n**To:** ' + target + '\n**Message:** "' + waMsg + '"');
+    addMessage('jarvis', autoCmd.display);
     window.postMessage({ type: 'JARVIS_EXECUTE', text: text.trim() }, '*');
-    addLog('sys', 'WhatsApp → extension');
+    addLog('sys', 'Extension → ' + autoCmd.type);
     return;
   }
+
+  input.value
 
   input.value = '';
   autoResize(input);
@@ -4478,6 +4524,22 @@ document.addEventListener('click', (e) => {
     closeHistoryPanel();
   }
 });
+
+// ━━━ EXTENSION RESULT LISTENER ━━━
+window.addEventListener('message', (event) => {
+  if (event.data?.type === 'JARVIS_RESULT' && event.data.automated) {
+    const result = event.data.result || 'Done!';
+    // Update last JARVIS message or add new one
+    addMessage('jarvis', '✅ ' + result);
+    addLog('ai', 'Extension: ' + result);
+    avatarTalking && avatarTalking();
+    setTimeout(() => avatarIdle && avatarIdle(), 2000);
+  }
+  if (event.data?.type === 'JARVIS_RESULT' && event.data.error) {
+    addMessage('jarvis', '⚠️ ' + event.data.error);
+  }
+});
+
 </body>
 </html>`,
 

@@ -2502,22 +2502,15 @@ async function sendMessage() {
   const text = input.value.trim();
   if (!text && !pendingFile) return;
 
-  // ── WHATSAPP — intercept BEFORE server, trigger extension directly ──
-  const waMatch = text.match(/^whatsapp\s+([+\d]{7,15})\s+(.+)$/i) ||
-                  text.match(/^whatsapp\s+([+\d]{7,15})[:\-]\s*(.+)$/i);
-  if (waMatch) {
-    const phone = waMatch[1].replace(/[^0-9]/g, '');
-    const msg   = waMatch[2].trim();
+  // ── WHATSAPP — ALL formats → extension directly, NEVER server ──
+  // Works with: "whatsapp Rahul: hello" / "whatsapp Mom hello" / "whatsapp +91xxx: hi"
+  if (/^(?:send\s+)?whatsapp\s+/i.test(text)) {
     input.value = '';
     addMessage('user', text);
-    addMessage('jarvis', '📱 **WhatsApp automation starting, Sir...**\n\nOpening WhatsApp Web → number: +' + phone + ' → message: "' + msg + '"');
-    // Fire extension
-    window.postMessage({ type: 'JARVIS_EXECUTE', text: 'whatsapp ' + phone + ' ' + msg }, '*');
-    // Open WhatsApp Web with pre-filled number+message
-    setTimeout(() => {
-      window.open('https://web.whatsapp.com/send?phone=' + phone + '&text=' + encodeURIComponent(msg), '_blank');
-    }, 200);
-    return;
+    addMessage('jarvis', '📱 **WhatsApp pe bhej raha hoon, Sir...**\n\nContact dhundh raha hoon aur message type kar raha hoon.');
+    window.postMessage({ type: 'JARVIS_EXECUTE', text: text.trim() }, '*');
+    addLog('sys', 'WhatsApp → extension');
+    return;  // ← server ko KABHI mat bhejo
   }
 
   input.value = '';
@@ -2525,16 +2518,13 @@ async function sendMessage() {
   messageCount++;
   document.getElementById('msgCount').textContent = messageCount;
   document.getElementById('totalMsgs').textContent = messageCount;
-
   const startTime = Date.now();
   const typing = document.getElementById('typing');
   typing.style.display = 'block';
   document.getElementById('messages').appendChild(typing);
   scrollBottom();
-
   try {
     let reply, sources;
-
     if (currentMode === 'search') {
       // WEB SEARCH MODE
       addMessage('user', `🌐 **SEARCH:** ${text}`);

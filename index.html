@@ -2686,7 +2686,7 @@ function detectAutomationCommand(text) {
   const t = text.trim();
   const tl = t.toLowerCase();
 
-  // WHATSAPP
+  // WHATSAPP — any format
   if (/^whatsapp\s+/i.test(t)) {
     const m = t.match(/^whatsapp\s+([^:]+)[:\-]?\s*(.*)$/i);
     const to = m ? m[1].trim() : '';
@@ -2701,30 +2701,38 @@ function detectAutomationCommand(text) {
   // PLAY
   if (/^(play|chalao|bajao)\s+/i.test(t)) {
     const q = t.replace(/^(play|chalao|bajao)\s+/i,'');
-    return { type: 'play', display: '🎵 Playing ' + q + ' on YouTube, Sir...' };
+    return { type: 'play', display: '🎵 Playing ' + q + ', Sir...' };
   }
   // YOUTUBE SEARCH
-  if (/youtube.*search|search.*youtube|youtube\s+pe/i.test(t)) {
+  if (/youtube.*(search|pe|par)|search.*youtube/i.test(t)) {
     return { type: 'youtube', display: '▶ Searching YouTube, Sir...' };
   }
   // GOOGLE SEARCH
-  if (/google.*search|search.*google|google\s+karo/i.test(t)) {
-    return { type: 'google', display: '🔍 Googling, Sir...' };
+  if (/google.*(search|karo|pe)|search.*google/i.test(t)) {
+    return { type: 'google', display: '🔍 Googling it, Sir...' };
   }
   // SCREENSHOT
   if (/^(screenshot|take screenshot|screen capture)$/i.test(t)) {
     return { type: 'screenshot', display: '📸 Taking screenshot, Sir...' };
   }
   // SCROLL
-  if (/^scroll\s+(down|up|neeche|upar)/i.test(t)) {
+  if (/^scroll\s+(down|up|neeche|upar|top|bottom)$/i.test(t)) {
     return { type: 'scroll', display: '↕ Scrolling, Sir...' };
   }
-  // CLOSE/NEW TAB
-  if (/^(close tab|new tab|tab band|naya tab|reload|refresh)$/i.test(t)) {
-    return { type: 'tab', display: '🗂 Tab command, Sir...' };
+  // TAB COMMANDS
+  if (/^(close tab|new tab|next tab|prev tab|reload|refresh|close all tabs|naya tab|tab band)$/i.test(t)) {
+    return { type: 'tab', display: '🗂 ' + t + ', Sir...' };
+  }
+  // ZOOM
+  if (/^zoom (in|out|reset)$/i.test(t)) {
+    return { type: 'zoom', display: '🔍 Zoom ' + t.split(' ')[1] + ', Sir...' };
+  }
+  // COPY URL
+  if (/^(copy url|copy page|link copy)$/i.test(t)) {
+    return { type: 'copy', display: '📋 URL copied, Sir...' };
   }
 
-  return null; // not an automation command → goes to AI
+  return null; // → goes to AI
 }
 
 async function sendMessage() {
@@ -2742,8 +2750,6 @@ async function sendMessage() {
     addLog('sys', 'Extension → ' + autoCmd.type);
     return;
   }
-
-  input.value
 
   input.value = '';
   autoResize(input);

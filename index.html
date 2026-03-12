@@ -2297,40 +2297,22 @@ function handleAutomation(cmd) {
   if (!cmd) return;
   
   if (cmd.type === 'whatsapp') {
-    // Tell extension to open WhatsApp and send message
-    const phone = cmd.phone?.replace(/[^0-9]/g, '') || '';
+    const contact = cmd.contact || cmd.phone || '';
     const message = cmd.message || '';
+    const byName  = cmd.byName || false;
     
-    if (phone) {
-      // Direct WhatsApp URL with auto-send via extension
-      window.postMessage({
-        type: 'JARVIS_EXECUTE',
-        text: `whatsapp ${phone} ${message}`
+    if (byName || isNaN(contact.replace(/[^0-9]/g,''))) {
+      // NAME-based: tell extension to search by name
+      window.postMessage({ 
+        type: 'JARVIS_EXECUTE', 
+        text: 'whatsapp ' + contact + ': ' + message 
       }, '*');
-      
-      // Also open directly
-      const url = `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
-      
-      // Send via extension
-      if (window.__jarvisExtension) {
-        window.__jarvisExtension.sendWhatsApp(phone, message);
-      } else {
-        // Fallback: open tab, extension content.js will handle
-        window.postMessage({
-          type: 'JARVIS_WHATSAPP_SEND',
-          phone, message
-        }, '*');
-        window.open(url, '_blank');
-        
-        // After 5 seconds, notify
-        setTimeout(() => {
-          addMessage('jarvis', `📱 WhatsApp opened, Sir. If message not auto-sent — press Enter in WhatsApp Web.`);
-        }, 5000);
-      }
     } else {
-      // No number — open WhatsApp Web
-      window.open('https://web.whatsapp.com', '_blank');
-      addMessage('jarvis', '📱 WhatsApp Web opened, Sir. Find the contact and I will type the message.');
+      // PHONE-based: open WhatsApp Web URL + extension auto-sends
+      const phone = contact.replace(/[^0-9]/g,'');
+      const url = 'https://web.whatsapp.com/send?phone=' + phone + '&text=' + encodeURIComponent(message);
+      window.postMessage({ type: 'JARVIS_EXECUTE', text: 'whatsapp ' + phone + ' ' + message }, '*');
+      window.open(url, '_blank');
     }
   }
 }

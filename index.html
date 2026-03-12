@@ -1827,10 +1827,10 @@ body::before {
       <button class="model-btn" onclick="setModel('llama-3.1-8b-instant', this)">
         LLaMA 3.1 8B <span class="model-speed">FAST</span>
       </button>
-      <button class="model-btn" onclick="setModel('llama3-70b-8192', this)">
+      <button class="model-btn" onclick="setModel('llama-3.3-70b-versatile', this)">
         LLaMA3 70B <span class="model-speed">SMART</span>
       </button>
-      <button class="model-btn" onclick="setModel('llama3-8b-8192', this)">
+      <button class="model-btn" onclick="setModel('llama-3.1-8b-instant', this)">
         LLaMA3 8B <span class="model-speed">MIX</span>
       </button>
     </div>
@@ -2703,21 +2703,17 @@ async function sendMessage() {
   const text = input.value.trim();
   if (!text && !pendingFile) return;
 
-  // ── WHATSAPP — intercept BEFORE server, trigger extension directly ──
-  const waMatch = text.match(/^whatsapp\s+([+\d]{7,15})\s+(.+)$/i) ||
-                  text.match(/^whatsapp\s+([+\d]{7,15})[:\-]\s*(.+)$/i);
-  if (waMatch) {
-    const phone = waMatch[1].replace(/[^0-9]/g, '');
-    const msg   = waMatch[2].trim();
+  // ── WHATSAPP — ALL formats → extension directly, NEVER server ──
+  if (/^whatsapp\s+/i.test(text)) {
     input.value = '';
     addMessage('user', text);
-    addMessage('jarvis', '📱 **WhatsApp automation starting, Sir...**\n\nOpening WhatsApp Web → number: +' + phone + ' → message: "' + msg + '"');
-    // Fire extension
-    window.postMessage({ type: 'JARVIS_EXECUTE', text: 'whatsapp ' + phone + ' ' + msg }, '*');
-    // Open WhatsApp Web with pre-filled number+message
-    setTimeout(() => {
-      window.open('https://web.whatsapp.com/send?phone=' + phone + '&text=' + encodeURIComponent(msg), '_blank');
-    }, 200);
+    // Extract name or number for display
+    const waDisp = text.match(/^whatsapp\s+([^:]+)[:\-]?\s*(.*)$/i);
+    const target = waDisp ? waDisp[1].trim() : '';
+    const waMsg  = waDisp ? waDisp[2].trim() : '';
+    addMessage('jarvis', '📱 WhatsApp pe bhej raha hoon, Sir...\n\n**To:** ' + target + '\n**Message:** "' + waMsg + '"');
+    window.postMessage({ type: 'JARVIS_EXECUTE', text: text.trim() }, '*');
+    addLog('sys', 'WhatsApp → extension');
     return;
   }
 

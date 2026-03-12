@@ -4608,7 +4608,14 @@ setInputMode = function(mode) {
   _origSetInputMode2(mode);
 };
 </script>
-
+// WhatsApp command? Extension ko bhejo, server ko nahi
+const waCheck = userInput.value.trim();
+if (/^whatsapp\s+[a-zA-Z]/i.test(waCheck)) {
+  window.postMessage({ type: 'JARVIS_EXECUTE', text: waCheck }, '*');
+  addMessage('jarvis', '⏳ Sending WhatsApp message...');
+  userInput.value = '';
+  return;
+}
 
 <!-- ═══════════ GOD MODE OVERLAY ═══════════ -->
 <div id="godModeOverlay">

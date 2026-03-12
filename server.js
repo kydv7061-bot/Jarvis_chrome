@@ -809,16 +809,12 @@ app.post('/api/vision', upload.single('image'), async (req, res) => {
 
 // MODELS LIST
 app.get('/api/models', (req, res) => {
-  res.json({
-    models: [
-      { id: 'llama-3.3-70b-versatile', name: 'LLaMA 3 70B', type: 'flagship', speed: 'fast' },
-      { id: 'llama-3.1-8b-instant', name: 'LLaMA 3 8B', type: 'quick', speed: 'ultra-fast' },
-      { id: 'llama-3.3-70b-versatile', name: 'Mixtral 8x7B', type: 'mixed', speed: 'fast' },
-      { id: 'llama-3.1-8b-instant', name: 'Gemma 2 9B', type: 'google', speed: 'fast' },
-      { id: 'llama-3.3-70b-versatile', name: 'LLaMA 3.1 70B', type: 'latest', speed: 'fast' },
-      { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'LLaMA 3.2 Vision', type: 'vision', speed: 'fast' }
-    ]
-  });
+  res.json({ models: [
+    { id: 'llama-3.3-70b-versatile', label: 'LLaMA 3.3 70B', tag: 'BEST' },
+    { id: 'llama-3.1-8b-instant',    label: 'LLaMA 3.1 8B',  tag: 'FAST' },
+    { id: 'llama-3.3-70b-specdec',   label: 'LLaMA 3.3 Spec', tag: 'SMART' },
+    { id: 'qwen-qwq-32b',            label: 'Qwen QwQ 32B',  tag: 'MIX' },
+  ]});
 });
 
 // CODE EXECUTION (sandboxed - runs in eval, no real system access)
@@ -1160,30 +1156,37 @@ app.get('/api/learn/sessions', (req, res) => {
 async function parseDesktopCommand(message) {
   const msg = message.toLowerCase().trim();
 
-  if (/whatsapp/i.test(msg)) {
-    const numMatch = message.match(/([+]?[0-9]{10,13})/);
-    const afterColon = message.match(/[:] *(.+)$/);
-    const contact = numMatch?.[1] || '';
-    const text = afterColon?.[1]?.trim() || '';
-    return { action: 'whatsapp_send', params: { contact, message: text } };
+  // WHATSAPP — detect name OR phone
+  if (/^whatsapp\s+/i.test(message.trim())) {
+    // Phone number format: whatsapp +917xxx: hello
+    const phoneMatch = message.match(/whatsapp\s+([+\d]{10,15})\s*[:\-]?\s*(.+)/i);
+    if (phoneMatch) {
+      return { action: 'whatsapp_send', params: { 
+        contact: phoneMatch[1].replace(/[^0-9]/g,''), 
+        message: phoneMatch[2].trim(),
+        byPhone: true
+      }};
+    }
+    // Name format: whatsapp Kashish: hello OR whatsapp Shrajal kya re
+    const nameMatch = message.match(/whatsapp\s+([a-zA-Z][a-zA-Z\s]{1,25}?)[:\-]\s*(.+)/i) ||
+                      message.match(/whatsapp\s+([a-zA-Z]{2,20})\s+(.{2,})/i);
+    if (nameMatch) {
+      return { action: 'whatsapp_send', params: {
+        contact: nameMatch[1].trim(),
+        message: nameMatch[2].trim(),
+        byName: true
+      }};
+    }
   }
+
   const openM = msg.match(/^(?:open|launch|start|kholo|chalu) +(.+)$/);
   if (openM) return { action: 'open_app', params: { app: openM[1].trim() } };
   if (/screenshot|screen shot/i.test(msg)) return { action: 'screenshot', params: {} };
-  const volM = msg.match(/volume[^0-9]*([0-9]+)/);
-  if (volM) return { action: 'volume', params: { level: parseInt(volM[1]) } };
-  if (/volume.*(up|badhao)/i.test(msg)) return { action: 'volume', params: { level: 80 } };
-  if (/volume.*(down|kam|mute)/i.test(msg)) return { action: 'volume', params: { level: 10 } };
-  if (/cpu|ram|battery|disk|system.?info|pc.?status|laptop.?status/i.test(msg)) return { action: 'system_info', params: {} };
-  const findM = msg.match(/(?:find|search|dhundho) +(?:file +)?(.+)/);
-  if (findM) return { action: 'search_files', params: { query: findM[1].trim() } };
-  const createM = msg.match(/(?:create|bana|save) +(?:a +)?(?:file|note) +(?:with +)?(?:text +)?(.+)/);
-  if (createM) return { action: 'create_file', params: { path: '~/Desktop/jarvis_note.txt', content: createM[1] } };
-  if (/list +(?:files|desktop)/i.test(msg)) return { action: 'list_files', params: { folder: '~/Desktop' } };
-  if (/scroll +down/i.test(msg)) return { action: 'scroll', params: { direction: 'down', amount: 5 } };
-  if (/scroll +up/i.test(msg)) return { action: 'scroll', params: { direction: 'up', amount: 5 } };
-  const runM = msg.match(/(?:run|execute) +(.+)/);
-  if (runM) return { action: 'run_command', params: { command: runM[1] } };
+  if (/^(?:cpu|ram|battery|memory|disk).*(status|info|usage)?/i.test(msg) || /system.?info/i.test(msg)) return { action: 'system_info', params: {} };
+  if (/^volume\s+(\d+)/i.test(msg)) { const v = msg.match(/volume\s+(\d+)/i); return { action: 'volume', params: { level: parseInt(v[1]) } }; }
+  if (/^(?:create|make|new)\s+file[:\s]+(.+)/i.test(msg)) { const m = msg.match(/(?:create|make|new)\s+file[:\s]+(.+)/i); return { action: 'create_file', params: { name: m[1] } }; }
+  if (/^(?:list|show)\s+files?/i.test(msg)) return { action: 'list_files', params: {} };
+  if (/^scroll\s+(down|up)/i.test(msg)) { const m = msg.match(/scroll\s+(down|up)/i); return { action: 'scroll', params: { direction: m[1] } }; }
   return null;
 }
 

@@ -2502,6 +2502,24 @@ async function sendMessage() {
   const text = input.value.trim();
   if (!text && !pendingFile) return;
 
+  // ── WHATSAPP — intercept BEFORE server, trigger extension directly ──
+  const waMatch = text.match(/^whatsapp\s+([+\d]{7,15})\s+(.+)$/i) ||
+                  text.match(/^whatsapp\s+([+\d]{7,15})[:\-]\s*(.+)$/i);
+  if (waMatch) {
+    const phone = waMatch[1].replace(/[^0-9]/g, '');
+    const msg   = waMatch[2].trim();
+    input.value = '';
+    addMessage('user', text);
+    addMessage('jarvis', '📱 **WhatsApp automation starting, Sir...**\n\nOpening WhatsApp Web → number: +' + phone + ' → message: "' + msg + '"');
+    // Fire extension
+    window.postMessage({ type: 'JARVIS_EXECUTE', text: 'whatsapp ' + phone + ' ' + msg }, '*');
+    // Open WhatsApp Web with pre-filled number+message
+    setTimeout(() => {
+      window.open('https://web.whatsapp.com/send?phone=' + phone + '&text=' + encodeURIComponent(msg), '_blank');
+    }, 200);
+    return;
+  }
+
   input.value = '';
   autoResize(input);
   messageCount++;

@@ -813,7 +813,7 @@ app.get('/api/models', (req, res) => {
     models: [
       { id: 'llama-3.3-70b-versatile', name: 'LLaMA 3 70B', type: 'flagship', speed: 'fast' },
       { id: 'llama-3.1-8b-instant', name: 'LLaMA 3 8B', type: 'quick', speed: 'ultra-fast' },
-      { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', type: 'mixed', speed: 'fast' },
+      { id: 'llama-3.3-70b-versatile', name: 'Mixtral 8x7B', type: 'mixed', speed: 'fast' },
       { id: 'llama-3.1-8b-instant', name: 'Gemma 2 9B', type: 'google', speed: 'fast' },
       { id: 'llama-3.3-70b-versatile', name: 'LLaMA 3.1 70B', type: 'latest', speed: 'fast' },
       { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'LLaMA 3.2 Vision', type: 'vision', speed: 'fast' }
